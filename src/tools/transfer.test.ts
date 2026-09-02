@@ -98,14 +98,57 @@ describe('check_course_transfer', () => {
     expect(out.caveats.some((c) => /machine-transcribed from ASSIST/.test(c))).toBe(true);
   });
 
-  it('a course that does not articulate says so plainly, not as an error', async () => {
-    // A humanities course against a CS agreement: transferable, but not major prep.
+  it('a course that does not articulate says so plainly, in three beats', async () => {
+    // A humanities course against a CS agreement: transferable, but not major
+    // prep. The summary must say it does not articulate, then what it DOES
+    // still carry, then where it counts — silence on the last two reads as
+    // "this course is worthless", which is almost never true.
     const out = await ok('check_course_transfer', { course: 'HIST 101', ...UCLA_CS });
     const d = out.data as { articulated: boolean; satisfies: unknown[] };
     expect(d.articulated).toBe(false);
     expect(d.satisfies).toEqual([]);
-    expect(out.summary).toMatch(/does not satisfy any lower-division major-preparation requirement/);
+    expect(out.summary).toMatch(
+      /^HIST C1001 does not articulate to any lower-division requirement for Computer Science at UC Los Angeles in the 2025-2026 agreement./,
+    );
+    expect(out.summary).toMatch(/still carries transfer general-education credit: Cal-GETC .+; IGETC /);
     assertHonest(out);
+  });
+
+  it('CSCI 1 for CS: the verified split of campuses that do and do not take it', async () => {
+    // Checked against the agreements on disk: CS at Cal Poly Pomona,
+    // UC Berkeley, San Diego State and UC San Diego articulates nothing from
+    // CSCI 1; UCLA and Cal State Long Beach do.
+    const out = await ok('check_course_transfer', { course: 'CSCI 1', campus: 'cal-poly-pomona', major: 'cs' });
+    const d = out.data as {
+      articulated: boolean;
+      alsoAcceptedAt: { campus: string }[];
+      notAcceptedAt: { campus: string; campusName: string }[];
+    };
+    expect(d.articulated).toBe(false);
+    const no = d.notAcceptedAt.map((c) => c.campus);
+    const yes = d.alsoAcceptedAt.map((c) => c.campus);
+    for (const id of ['uc-berkeley', 'san-diego-state', 'uc-san-diego']) expect(no, id).toContain(id);
+    for (const id of ['ucla', 'csulb']) expect(yes, id).toContain(id);
+    // The campus asked about is in neither list, and the two lists partition
+    // every other campus covered for the major — so "nowhere" and "we didn't
+    // check" can never look the same.
+    expect(no).not.toContain('cal-poly-pomona');
+    expect(yes).not.toContain('cal-poly-pomona');
+    expect(new Set([...no, ...yes]).size).toBe(16);
+    expect(d.notAcceptedAt.every((c) => c.campusName.length > 0)).toBe(true);
+    expect(out.summary).toContain('does not articulate to any lower-division requirement');
+    expect(out.summary).toMatch(/It does count toward this major at .*UC Los Angeles.*, and does not at .*UC Berkeley/);
+    assertHonest(out);
+  });
+
+  it('an articulated course keeps its positive summary', async () => {
+    const out = await ok('check_course_transfer', { course: 'CSCI 1', ...UCLA_CS });
+    const d = out.data as { articulated: boolean; notAcceptedAt: { campus: string }[] };
+    expect(d.articulated).toBe(true);
+    // notAcceptedAt is present either way, so an agent can always answer
+    // "where doesn't this count".
+    expect(d.notAcceptedAt.map((c) => c.campus)).toContain('cal-poly-pomona');
+    expect(out.summary).toMatch(/^CSCI 1 .* satisfies /);
   });
 
   it('an unknown course is an error carrying the nearest catalog codes', async () => {
@@ -230,6 +273,54 @@ describe('compare_campuses', () => {
     expect(Math.max(...d.rows.map((r) => r.unitsApplied))).toBeGreaterThan(0);
   });
 
+  it('names WHICH courses only transfer as electives at each campus', async () => {
+    // A CS load with two courses that are not CS prep anywhere.
+    const out = await ok('compare_campuses', {
+      courses: ['MATH 190', 'MATH 191', 'CSCI 1', 'CSCI 2', 'HIST 101', 'PHYS 1A'],
+      major: 'cs',
+    });
+    const d = out.data as { rows: { campus: string; electivesOnly: number; electiveCourses: string[] }[] };
+    expect(d.rows.every((r) => Array.isArray(r.electiveCourses))).toBe(true);
+    // The list itemises the count, so an agent can say which courses those are
+    // rather than only how many.
+    for (const r of d.rows) {
+      if (r.electivesOnly <= 8) expect(r.electiveCourses, r.campus).toHaveLength(r.electivesOnly);
+      else expect(r.electiveCourses[8], r.campus).toBe(`+${r.electivesOnly - 8} more`);
+    }
+    // At least one campus takes none of the CSCI work for the major.
+    // Cal Poly Pomona takes CSCI 2 for CS 2400 but articulates nothing from
+    // CSCI 1 — so exactly one of the pair is elective-only there.
+    const cpp = d.rows.find((r) => r.campus === 'cal-poly-pomona')!;
+    expect(cpp.electiveCourses).toContain('CSCI 1');
+    expect(cpp.electiveCourses).not.toContain('CSCI 2');
+    // …and every listed code is one the student actually gave us.
+    const given = ['MATH 190', 'MATH 191', 'CSCI 1', 'CSCI 2', 'HIST C1001', 'PHYS 1A'];
+    for (const r of d.rows) {
+      for (const code of r.electiveCourses) {
+        if (code.startsWith('+')) continue;
+        expect(given, `${r.campus} listed ${code}`).toContain(code);
+      }
+    }
+  });
+
+  it('caps a long elective list with a countable marker rather than dropping courses', async () => {
+    // Twelve courses, none of them CS preparation at Cal Poly Pomona.
+    // Twelve real catalog courses that carry no transfer GE area and are not
+    // Cal Poly Pomona CS preparation, so every one lands in the elective bucket.
+    const courses = [
+      'BIOL 12', 'BUS 101', 'BUS 150', 'BUS 108', 'BUS 109', 'BUS 115',
+      'BUS 117', 'BUS 120', 'BUS 121', 'BUS 122', 'BUS 126', 'BUS 151',
+    ];
+    const out = await ok('compare_campuses', { courses, major: 'cs', campuses: ['cal-poly-pomona'] });
+    const row = (out.data as { rows: { electivesOnly: number; electiveCourses: string[] }[] }).rows[0];
+    expect(row.electivesOnly).toBe(12);
+    // The count stays whole; only the naming is capped, and the marker says
+    // by how much.
+    expect(row.electiveCourses).toHaveLength(9);
+    expect(row.electiveCourses[8]).toBe('+4 more');
+    expect(row.electiveCourses.slice(0, 8).every((c) => courses.includes(c))).toBe(true);
+  });
+
   it('restricts to the campuses asked for', async () => {
     const out = await ok('compare_campuses', { courses: COURSES, major: 'cs', campuses: ['UCLA', 'Cal Poly Pomona'] });
     const d = out.data as { rows: { campus: string }[] };
@@ -282,12 +373,82 @@ describe('explain_requirement', () => {
     expect(d.matches[0].label.toLowerCase()).toContain('discrete');
   });
 
+  it('finds a row by the receiving subject alone, whatever the campus calls it', async () => {
+    // Cal Poly Pomona prints "Introduction to Newtonian Mechanics (PHY 1510)".
+    // "physics" used to find nothing there, because the label never says it.
+    const out = await ok('explain_requirement', { requirement: 'physics', campus: 'cpp', major: 'cs' });
+    const d = out.data as { matches: { rowId: string; label: string; options: { code: string }[] }[] };
+    expect(d.matches).toHaveLength(1);
+    expect(d.matches[0].label).toContain('PHY 1510');
+    expect(d.matches[0].options.map((o) => o.code)).toContain('PHYS 1A');
+    assertHonest(out);
+  });
+
+  it('the subject families are interchangeable in both directions', async () => {
+    // PHY / PHYS / PHYSICS name one subject; so do MATH / MAT and the CS
+    // family. A student should not have to know which spelling their campus
+    // prints.
+    for (const needle of ['phy', 'phys', 'PHYSICS', 'PHY 1510']) {
+      const out = await ok('explain_requirement', { requirement: needle, campus: 'cpp', major: 'cs' });
+      expect((out.data as { matches: { rowId: string }[] }).matches.map((m) => m.rowId), needle).toContain('phy-1510');
+    }
+    const mat = await ok('explain_requirement', { requirement: 'math', campus: 'cpp', major: 'cs' });
+    const ids = (mat.data as { matches: { rowId: string }[] }).matches.map((m) => m.rowId);
+    expect(ids).toContain('mat-1140');
+    expect(ids).toContain('mat-1150');
+  });
+
+  it('finds a row by the El Camino course code that satisfies it', async () => {
+    // At UCLA "PHYS 1A" names two things at once: El Camino's own PHYS 1A,
+    // which satisfies physics-1a-p3, and UCLA's PHYSICS 1A, printed in the
+    // "[series PHYSICS 1A+…]" heading every row of that series carries. Both
+    // are honest readings of the question, so both are returned.
+    const out = await ok('explain_requirement', { requirement: 'PHYS 1A', ...UCLA_CS });
+    const d = out.data as { matches: { rowId: string; label: string; options: { code: string }[] }[] };
+    const byOption = d.matches.find((m) => m.options.some((o) => o.code === 'PHYS 1A'))!;
+    expect(byOption.rowId).toBe('physics-1a-p3');
+    expect(d.matches.every((m) => /PHYS(ICS)? 1A/.test(m.label) || m.options.some((o) => o.code === 'PHYS 1A'))).toBe(true);
+  });
+
+  it('an option code with no ambiguity finds exactly the rows it satisfies', async () => {
+    // CSCI 16 appears in one UCLA CS row and nowhere in any receiving label.
+    const out = await ok('explain_requirement', { requirement: 'CSCI 16', ...UCLA_CS });
+    const d = out.data as { matches: { rowId: string; options: { code: string }[] }[] };
+    expect(d.matches).toHaveLength(1);
+    expect(d.matches[0].rowId).toBe('com-sci-33');
+    expect(d.matches[0].options.map((o) => o.code)).toContain('CSCI 16');
+  });
+
+  it('matches a row id and a receiving code exactly', async () => {
+    const byCode = await ok('explain_requirement', { requirement: 'CS 1400', campus: 'cpp', major: 'cs' });
+    expect((byCode.data as { matches: { rowId: string }[] }).matches[0].rowId).toBe('cs-1400');
+    const byId = await ok('explain_requirement', { requirement: 'cs-1400', campus: 'cpp', major: 'cs' });
+    expect((byId.data as { matches: { rowId: string }[] }).matches[0].rowId).toBe('cs-1400');
+  });
+
+  it('collapses the rows of one select-group member instead of repeating it', async () => {
+    // UCLA's "Complete one full option for Introduction to Computer Science I"
+    // splits one alternative across two normalized rows.
+    const out = await ok('explain_requirement', { requirement: 'COM SCI 31', ...UCLA_CS });
+    const d = out.data as { matches: { rowId: string; group?: { id: string } }[] };
+    const members = d.matches
+      .filter((m) => m.group)
+      .map((m) => `${m.group!.id}|${m.rowId}`);
+    expect(new Set(members).size).toBe(members.length);
+    // Two members of the group, not the three rows they span.
+    expect(d.matches.filter((m) => m.group?.id === 'com-sci-31-opt')).toHaveLength(2);
+  });
+
   it('no match is requirement_not_found with candidate labels', async () => {
     const out = await TRANSFER_IMPLS.explain_requirement({ requirement: 'underwater basket weaving', ...UCLA_CS }, ctx());
     expect(isToolError(out)).toBe(true);
     if (!isToolError(out)) return;
     expect(out.error).toBe('requirement_not_found');
-    expect(out.hint!.length).toBeGreaterThan(20);
+    // Up to twelve candidate labels, so an agent has enough of the agreement
+    // to pick from rather than five rows and a guess.
+    const listed = out.hint!.split(' · ').length;
+    expect(listed).toBeGreaterThan(5);
+    expect(listed).toBeLessThanOrEqual(12);
   });
 
   it('an option outside our catalog snapshot is reported as such, not as a gap in the student', async () => {

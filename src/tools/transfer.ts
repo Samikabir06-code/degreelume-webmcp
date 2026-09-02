@@ -12,7 +12,7 @@
 // the verdict vocabulary is the engine's own eligible / competitive / reach.
 
 import type {
-  AuditResult, AuditedArea, AuditedReq, Course, MajorMeta, RequirementSet, SchoolMeta,
+  AuditResult, AuditedArea, AuditedReq, Course, MajorMeta, MajorPrepReq, RequirementSet, SchoolMeta,
 } from '../types';
 import type { Citation, ToolError, ToolOutput } from './contract';
 import { toolError, type ToolContext, type ToolImplMap } from './runtime';
@@ -295,16 +295,22 @@ const check_course_transfer = (
     ...(r.group ? { group: { label: r.group.label, count: r.group.count } } : {}),
   }));
 
-  // Where else the same course carries for the same major — the question a
-  // student asks the moment the answer at one campus is "no".
-  const alsoAcceptedAt = campusesWithData(major.id)
+  // Where else the same course carries for the same major, and where it does
+  // not — the two questions a student asks the moment the answer at one campus
+  // is "no". Both lists are computed over every campus this build covers for
+  // the major, so "it doesn't count anywhere" and "we didn't check" can never
+  // look the same.
+  const elsewhere = campusesWithData(major.id)
     .filter((s) => s.id !== campus.id)
     .map((s) => {
       const other = getRequirements(s.id, major.id, COLLEGE_ID)!;
       const hits = rowsAccepting(other, course.code);
       return { campus: s.id, campusName: s.name, rows: hits.map((r) => r.label) };
-    })
-    .filter((x) => x.rows.length > 0);
+    });
+  const alsoAcceptedAt = elsewhere.filter((x) => x.rows.length > 0);
+  const notAcceptedAt = elsewhere
+    .filter((x) => x.rows.length === 0)
+    .map((x) => ({ campus: x.campus, campusName: x.campusName }));
 
   const geAreas = {
     calgetc: geAreaList(course.calgetc, CALGETC_AREAS),
@@ -312,13 +318,25 @@ const check_course_transfer = (
   };
 
   const articulated = satisfies.length > 0;
-  const geLine = course.calgetc.length > 0 || course.igetc.length > 0
+  const carriesGe = course.calgetc.length > 0 || course.igetc.length > 0;
+  const geLine = carriesGe
     ? ` It also carries general-education credit: Cal-GETC ${course.calgetc.join(', ') || '—'}; IGETC ${course.igetc.join(', ') || '—'}.`
     : ' It carries no transfer general-education area at El Camino.';
 
+  // The "no" answer is the one a student is most likely to act on, so it is
+  // spelled out in three beats: it does not articulate here; what it still
+  // does carry; and where it does count. Silence on any of the three reads as
+  // "this course is worthless", which is almost never true.
+  const noGeLine = carriesGe
+    ? `It still carries transfer general-education credit: Cal-GETC ${course.calgetc.join(', ') || '—'}; IGETC ${course.igetc.join(', ') || '—'}.`
+    : 'It carries no transfer general-education area at El Camino either, so it would transfer as elective credit only.';
+  const elsewhereLine = alsoAcceptedAt.length > 0
+    ? `It does count toward this major at ${alsoAcceptedAt.map((a) => a.campusName).join(', ')}${notAcceptedAt.length > 0 ? `, and does not at ${notAcceptedAt.map((a) => a.campusName).join(', ')}` : ''}.`
+    : 'No other campus this build covers accepts it for this major either.';
+
   const summary = articulated
     ? `${course.code} (${course.name}, ${course.units} units) satisfies ${satisfies.length === 1 ? 'one' : satisfies.length} lower-division requirement${satisfies.length === 1 ? '' : 's'} for ${major.name} at ${campus.name}: ${satisfies.map((s) => s.label).join('; ')}. Source: the ${set.meta.catalogYear} ASSIST agreement.${geLine}`
-    : `${course.code} (${course.name}, ${course.units} units) does not satisfy any lower-division major-preparation requirement for ${major.name} at ${campus.name} in the ${set.meta.catalogYear} agreement.${alsoAcceptedAt.length > 0 ? ` It does count for this major at ${alsoAcceptedAt.map((a) => a.campusName).join(', ')}.` : ''}${geLine}`;
+    : `${course.code} does not articulate to any lower-division requirement for ${major.name} at ${campus.name} in the ${set.meta.catalogYear} agreement. ${noGeLine} ${elsewhereLine}`;
 
   const caveats = caveatsFor(set, campus.name);
   if (hit.viaFormerCode) {
@@ -345,6 +363,7 @@ const check_course_transfer = (
       geAreas,
       articulated,
       alsoAcceptedAt,
+      notAcceptedAt,
     },
     citations: [agreementCitation(set), catalogCitation],
     caveats,
@@ -427,6 +446,15 @@ const audit_coursework = (
 
 const VERDICT_RANK: Record<string, number> = { eligible: 0, competitive: 1, reach: 2 };
 
+// A campus row lists at most this many elective-only courses by name.
+const ELECTIVE_LIST_MAX = 8;
+
+function electiveCoursesFor(audit: AuditResult): string[] {
+  const elective = (audit.carryOver?.items ?? []).filter((i) => i.kind === 'elective').map((i) => i.code);
+  if (elective.length <= ELECTIVE_LIST_MAX) return elective;
+  return [...elective.slice(0, ELECTIVE_LIST_MAX), `+${elective.length - ELECTIVE_LIST_MAX} more`];
+}
+
 const compare_campuses = (
   input: { courses?: string[]; inProgress?: string[]; major?: string; campuses?: string[]; entryTerm?: string },
   ctx: ToolContext,
@@ -504,6 +532,12 @@ const compare_campuses = (
       unitsElective: carry?.unitsElective ?? 0,
       creditsThatCount: s.creditsThatCount,
       electivesOnly: s.electivesOnly,
+      // WHICH courses only transfer as electives here — the itemisation of
+      // electivesOnly, straight off the audit's own carry-over. Capped at
+      // ELECTIVE_LIST_MAX with a "+n more" marker so seventeen campuses of
+      // these cannot push the agent payload past its size cap; the count above
+      // stays whole either way.
+      electiveCourses: electiveCoursesFor(audit),
       estTerms: s.estTerms,
       provenance: s.provenance,
       sourceUrl: set.meta.sourceUrl,
@@ -544,6 +578,97 @@ const compare_campuses = (
   };
 };
 
+// ── requirement matching ─────────────────────────────────────────────────────
+//
+// An agent asks the way a student talks: "physics", "the calculus one",
+// "PHYS 1A", "MATH 31A", or a row id copied out of an audit. A row is written
+// the way ASSIST prints it — "Introduction to Newtonian Mechanics (PHY 1510)
+// [series PHY 1510+PHY 1510L]" — with the RECEIVING campus's own subject code
+// in the parentheses and El Camino's codes only in `options`. Matching on the
+// label text alone missed all of that: "physics" found nothing at Cal Poly
+// Pomona, whose physics row says PHY.
+//
+// So a row is searched on four surfaces, all word-anchored and
+// case-insensitive: its label (and its group heading), the receiving codes in
+// its parentheses, its row id, and the El Camino option codes — which is what
+// makes `explain_requirement {requirement: 'PHYS 1A'}` list every row PHYS 1A
+// satisfies.
+
+// Campuses name the same subject differently, and a student should not have to
+// know which spelling their campus uses. Each row here is one subject, all its
+// spellings; a needle in a family matches every alias in it.
+const SUBJECT_FAMILIES: string[][] = [
+  ['phy', 'phys', 'physics'],
+  ['math', 'mat'],
+  ['cs', 'csci', 'com sci', 'compsci', 'cpsc', 'cecs'],
+];
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+function familyOf(subject: string): string[] {
+  return SUBJECT_FAMILIES.find((f) => f.includes(subject)) ?? [subject];
+}
+
+// Course-code-shaped tokens inside a string: "phy 1510", "com sci 31",
+// "mat 1140". Returns [subject, wholeCode] pairs.
+function codesIn(normalized: string): { subject: string; code: string }[] {
+  const out: { subject: string; code: string }[] = [];
+  const re = /([a-z]+(?:\s[a-z]+)?)\s(\d+[a-z]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(normalized)) !== null) out.push({ subject: m[1], code: `${m[1]} ${m[2]}` });
+  return out;
+}
+
+// The needle, plus the same needle written with every alias of its subject.
+// "physics" → phy / phys / physics; "phys 1a" → phy 1a / phys 1a / physics 1a.
+function needleVariants(needle: string): string[] {
+  const out = new Set<string>([needle]);
+  const m = needle.match(/^([a-z]+(?:\s[a-z]+)?)(?:\s(\d+[a-z]*))?$/);
+  if (m) for (const alias of familyOf(m[1])) out.add(m[2] ? `${alias} ${m[2]}` : alias);
+  return [...out];
+}
+
+export function requirementMatches(row: MajorPrepReq, needleRaw: string): boolean {
+  const needle = norm(needleRaw);
+  if (!needle) return false;
+  if (norm(row.id) === needle) return true;
+
+  const label = norm(row.label);
+  const groupLabel = row.group ? norm(row.group.label) : '';
+  // Receiving codes as ASSIST prints them — inside the parentheses and the
+  // "[series …]" brackets that follow some rows.
+  const receiving = [...row.label.matchAll(/[([]([^)\]]*)[)\]]/g)].map((m) => norm(m[1]));
+  const options = row.options.map(norm);
+  const phrases = [label, groupLabel, ...receiving, ...options].filter(Boolean);
+  const subjects = new Set(
+    [...receiving, ...options].flatMap((s) => codesIn(s).map((c) => c.subject)),
+  );
+
+  for (const variant of needleVariants(needle)) {
+    for (const phrase of phrases) {
+      if (` ${phrase} `.includes(` ${variant} `)) return true;
+    }
+    // A bare subject ("physics", "com sci") matches any code in that subject,
+    // whichever spelling the campus prints.
+    if (!/\d/.test(variant) && subjects.has(variant)) return true;
+  }
+  return false;
+}
+
+// Rows that share a group member describe ONE alternative split across several
+// normalized rows ("option 1 of 2, part 2 of 2"). Returning all of them repeats
+// the same requirement at the agent; the first row of each member carries it.
+function dedupeGroupMembers(rows: MajorPrepReq[]): MajorPrepReq[] {
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    if (!r.group) return true;
+    const key = `${r.group.id}|${r.group.memberId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // ── explain_requirement ──────────────────────────────────────────────────────
 
 const explain_requirement = (
@@ -562,16 +687,12 @@ const explain_requirement = (
   if (isErr(target)) return target;
   const { campus, major, set } = target;
 
-  const hay = needle.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const matches = set.majorPrep.filter((r) => {
-    const label = r.label.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
-    return r.id.toLowerCase() === needle.toLowerCase()
-      || label.includes(hay)
-      || (r.group ? r.group.label.toLowerCase().replace(/[^a-z0-9]+/g, ' ').includes(hay) : false);
-  });
+  // Every row that matches, on any of the four surfaces (see requirementMatches
+  // above), with rows of one select-group member collapsed to the first.
+  const matches = dedupeGroupMembers(set.majorPrep.filter((r) => requirementMatches(r, needle)));
 
   if (matches.length === 0) {
-    const candidates = set.majorPrep.slice(0, 5).map((r) => r.label);
+    const candidates = dedupeGroupMembers(set.majorPrep).slice(0, 12).map((r) => r.label);
     return toolError(
       'requirement_not_found',
       `No requirement matching "${needle}" in the ${set.meta.catalogYear} agreement for ${major.name} at ${campus.name}.`,
