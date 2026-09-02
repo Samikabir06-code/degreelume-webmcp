@@ -13,9 +13,17 @@ import type { StudentProfile, MajorId } from '../types';
 // ─── Major Switch Explorer goldens — HAND-DERIVED (hard rule 5) ───
 //
 // Every expected number below is derived BY HAND from the generated
-// requirement modules (ecc.ucr.{math,mech,econ}.ts — themselves transcribed
-// from the 2025-26 ASSIST pulls), never from engine output. Derivations are
-// inline; if a data refresh changes an agreement, re-derive by hand.
+// requirement modules (themselves transcribed from the 2025-26 ASSIST pulls),
+// never from engine output. Derivations are inline; if a data refresh changes
+// an agreement, re-derive by hand.
+//
+// TRIMMED for this build's data slice: the original per-major goldens ran on
+// ECC→UCR math / mech / econ / comm, and this repo carries agreements for
+// three majors only (business, cs, psych — docs/PLAN.md). Those four
+// hand-derivations are therefore about data this repo does not hold, and are
+// gone rather than re-derived against a different major. What survives is what
+// this module actually contributes — the baseline pinning and the ordering
+// rule — re-expressed over the three majors the slice does carry.
 
 const STUDENT: StudentProfile = {
   college: 'ecc',
@@ -71,7 +79,7 @@ function candidateFor(major: MajorId): SwitchCandidate | null {
 }
 
 describe('major-switch goldens: ECC→UCR, CS student with the calc sequence done', () => {
-  const majors: MajorId[] = ['cs', 'math', 'mech', 'econ'];
+  const majors: MajorId[] = ['cs', 'business', 'psych'];
   const matrix = buildSwitchMatrix(
     { major: 'cs', school: 'ucr' },
     majors.map(candidateFor).filter((c): c is SwitchCandidate => c != null),
@@ -84,87 +92,41 @@ describe('major-switch goldens: ECC→UCR, CS student with the calc sequence don
     expect(matrix.baseline).toBe(matrix.rows[0]);
   });
 
-  it('math: 2/2 required rows covered — coverage 1.0, competitive (CNAS selective)', () => {
-    // HAND-DERIVED from ecc.ucr.math.ts: two select-1 groups → requiredTotal 2.
-    //  g1 member math-9a = rows {MATH 191, MATH 190} — both completed → closed.
-    //  g2 member math-10a = row {MATH 220} — completed → closed.
-    // GPA 3.2 ≥ 2.7 floor, no required missing, but impacted (CNAS screen)
-    // → 'competitive', never 'eligible'.
-    const r = row('math');
-    expect(r.prepTotal).toBe(2);
-    expect(r.prepDone).toBe(2);
-    expect(r.prepMissing).toBe(0);
-    expect(r.coverage).toBe(1);
-    expect(r.verdict).toBe('competitive');
+  it('every candidate with an agreement produces exactly one row', () => {
+    expect(matrix.rows.map((r) => r.major).sort()).toEqual(['business', 'cs', 'psych']);
   });
 
-  it('mech: 2/8 required rows covered — coverage 0.25, reach', () => {
-    // RE-DERIVED BY HAND 2026-08-21, after the ASSIST re-pull corrected the
-    // required/recommended flags (scripts/assist-repull.mjs).
-    //
-    // From data-sources/.../el-camino/agreements/uc-riverside__mech__2025-26.json,
-    // whose ASSIST headings put the first block under "LOWER DIVISION MAJOR
-    // REQUIREMENTS" and MATH 10A / MATH 46 / STAT 10 under a recommended one:
-    //   5 plain required rows — PHYS 40A(←PHYS 1A), CHEM 1A(←CHEM 1A+1B, split
-    //     into two rows), MATH 9A(←MATH 191+190, split into two rows)
-    //   1 select-3 group g2-n3 over 4 members — ME 9(←CADD 7|5), ME 10(←ENGR 9),
-    //     PHYS 40B(←PHYS 1B), PHYS 40C(←PHYS 1C)
-    //   → requiredTotal 5 + 3 = 8.
-    // The student has MATH 190 + MATH 191, covering both MATH 9A rows → done 2.
-    // Nothing in the select-3 group is covered → 3 short. missing 3 + 3 = 6.
-    //
-    // Was 10/3/0.3: MATH 10A (←MATH 220, which this student HAS) used to be
-    // marked required. ASSIST lists it as recommended, so it no longer counts
-    // toward required prep — the correction, visible in a golden.
-    const r = row('mech');
-    expect(r.prepTotal).toBe(8);
-    expect(r.prepDone).toBe(2);
-    expect(r.prepMissing).toBe(6);
-    expect(r.coverage).toBeCloseTo(0.25, 10);
-    expect(r.verdict).toBe('reach');
-  });
-
-  it('econ: the one genuinely required row is covered — coverage 1, eligible', () => {
-    // RE-DERIVED BY HAND 2026-08-21, after the ASSIST re-pull.
-    //
-    // The raw payload's own headings decide this, and they are unambiguous:
-    //   TITLE "LOWER DIVISION MAJOR REQUIREMENTS" → MATH 9A     → required
-    //   TITLE "STRONGLY RECOMMENDED COURSES"      → ECON 2,
-    //                                                ECON 3,
-    //                                                MATH 9B    → recommended
-    // → requiredTotal 1. The student has MATH 190, which articulates to
-    // MATH 9A → done 1, missing 0, coverage 1.
-    //
-    // Was 0/null/'competitive': every row read as recommended, because
-    // `required` was taken from the nearest heading and "STRONGLY RECOMMENDED
-    // COURSES" reached the block above it. UCR does list most prep as
-    // recommended — but not this row.
-    //
-    // The verdict moves with it, and correctly. econ.facts.json is
-    // impacted:false, gpaTarget 2.4; this student is at 3.2 with every
-    // required row done, which is the definition of 'eligible'. It only read
-    // 'competitive' before because requiredTotal was 0 — "nothing missing, but
-    // nothing all-done either". Compare math above, which stays 'competitive'
-    // with full coverage because CNAS genuinely screens (impacted:true).
-    const r = row('econ');
+  it('psych: the one admission-gating math slot is covered — coverage 1', () => {
+    // HAND-DERIVED from ucr.psych.ts: the agreement's only REQUIRED row is the
+    // "Select 1" math group, whose members include MATH 9A ← MATH 190. This
+    // student has MATH 190 → the group closes. The bio / physical-science /
+    // two-additional rows are required:false (prose requirements completable
+    // at UCR within a year), so they never enter the required tally.
+    const r = row('psych');
     expect(r.prepTotal).toBe(1);
     expect(r.prepDone).toBe(1);
     expect(r.prepMissing).toBe(0);
     expect(r.coverage).toBe(1);
-    expect(r.verdict).toBe('eligible');
   });
 
-  it('ordering: fully-covered math and econ sort above mech (0.25)', () => {
-    const order = matrix.rows.map((r) => r.major);
-    expect(order[0]).toBe('cs');
-    expect(order.indexOf('math')).toBeLessThan(order.indexOf('mech'));
-    expect(order.indexOf('econ')).toBeLessThan(order.indexOf('mech'));
+  it('business: none of the six required slots is covered by a CS course load', () => {
+    // HAND-DERIVED from ucr.business.ts: six required rows — BUS 10 ← BUS 101,
+    // BUS 20 ← BUS 150, ECON 2 ← ECON 101, ECON 3 ← ECON 102, "Complete 1"
+    // {MATH 22 ← MATH 165 | MATH 9A ← MATH 190}, "Complete 1" {STAT 8 ←
+    // STAT C1000}. This student holds MATH 190, which closes the math group
+    // and nothing else → 1 of 6.
+    const r = row('business');
+    expect(r.prepTotal).toBe(6);
+    expect(r.prepDone).toBe(1);
+    expect(r.prepMissing).toBe(5);
+    expect(r.verdict).toBe('reach'); // required prep still missing dominates
   });
 
-  it('not-offered metadata flows from majors.ts, never invented by the engine', () => {
-    const comm = candidateFor('comm')!;
-    expect(comm.notOffered?.closestName).toBe('Media and Cultural Studies, B.A.');
-    const m = buildSwitchMatrix({ major: 'cs', school: 'ucr' }, [comm]);
-    expect(m.rows[0].notOffered?.closestName).toBe('Media and Cultural Studies, B.A.');
+  it('ordering: non-baseline rows are sorted by coverage, best first', () => {
+    // The engine's own rule (a floor-only major, coverage null, sorts as fully
+    // covered). Asserted as a property so it survives a data refresh.
+    const cov = matrix.rows.slice(1).map((r) => r.coverage ?? 1);
+    expect(cov).toEqual([...cov].sort((a, b) => b - a));
+    expect(matrix.rows.indexOf(row('psych'))).toBeLessThan(matrix.rows.indexOf(row('business')));
   });
 });
