@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@import "tailwindcss";
+
+/* Design tokens — the DegreeLume shell: cool neutral paper, hairline rules,
+   big radii, one lilac accent. Components reference tokens (bg-paper,
+   text-accent, border-line…), never raw hex. */
+@theme {
+  --color-paper: #F6F6F5;
+  --color-ivory: #FFFFFF;
+  --color-parchment: #ECECEA;
+  --color-cloud: #DCDCD8;
+
+  --color-ink: #1D1D1D;
+  --color-muted: #4A4A4A;
+  --color-faint: #6B6B68;
+
+  --color-band: #313131;
+  --color-band-line: #585858;
+
+  --color-accent: #6B3FD4;
+  --color-accent-dark: #542FAE;
+  --color-accent-bright: #8460E8;
+  --color-accent-light: #F4F2FD;
+  --color-accent-wash: #EFECFD;
+
+  --color-line: #E3E3E0;
+  --color-line-strong: #C9C9C4;
+
+  /* Status — used sparingly, always with a label, never colour alone. */
+  --color-ok: #1F7A4D;
+  --color-ok-wash: #E8F5EE;
+  --color-warn: #9A6200;
+  --color-warn-wash: #FFF4DF;
+  --color-risk: #B3261E;
+  --color-risk-wash: #FDECEA;
+
+  --font-sans: "Host Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-card: 1rem;
+  --radius-chip: 999px;
+}
+
+html { color-scheme: light; }
+body { @apply bg-paper text-ink font-sans antialiased; }

@@ -1,0 +1,25 @@
+// A SEPARATE Worker from the main DegreeLume product. Different name, different
+// subdomain, deployed on its own. It must never share a route with degreelume.com.
+//
+// Cloudflare serves the Vite bundle as static assets; the Worker only runs for
+// /api/* (the read-only Canvas proxy). No secrets are required: the student's
+// Canvas token travels from their browser to the Worker to their own Canvas
+// host on every request and is never stored server-side.
+{
+  "name": "degreelume-webmcp",
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-08-21",
+  "routes": [
+    { "pattern": "assistant.degreelume.com", "custom_domain": true }
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  }
+}

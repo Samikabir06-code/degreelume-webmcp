@@ -1,0 +1,7 @@
+# Normalise everything to LF in the repository. On Windows core.autocrlf=true
+# rewrites the working copy to CRLF, and a CRLF-terminated shebang defeats
+# Vite's `#!` stripping (it then fails inside vitest with no file and no line).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.svg text eol=lf

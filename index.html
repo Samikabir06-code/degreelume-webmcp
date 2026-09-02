@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="application-name" content="DegreeLume Assistant" />
+    <meta name="theme-color" content="#F6F6F5" />
+    <!--
+      WebMCP origin trial. Once the origin is registered at
+      https://developer.chrome.com/origintrials/#/register_trial/4163014905550602241
+      paste the token here so Chrome 149+ exposes document.modelContext to every
+      visitor without a flag. Until then, testers enable
+      chrome://flags/#enable-webmcp-testing or use the ChatGPT desktop browser.
+    -->
+    <!-- <meta http-equiv="origin-trial" content="PASTE_TOKEN_HERE" /> -->
+    <title>DegreeLume Assistant — a college counselor your AI agent can call</title>
+    <meta
+      name="description"
+      content="A WebMCP-enabled college counselor. Your agent can check how your El Camino College courses transfer to 17 UC and CSU campuses, audit your coursework, compare campuses side by side, read your Canvas grades and due dates, and tell you what has to happen before your application deadline — every answer cited to the official agreement."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DegreeLume Assistant" />
+    <meta property="og:title" content="DegreeLume Assistant — a college counselor your AI agent can call" />
+    <meta property="og:description" content="Deterministic transfer tools over official ASSIST agreements, plus your live Canvas courses, grades and deadlines — exposed to AI agents through WebMCP." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
