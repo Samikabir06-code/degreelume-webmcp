@@ -135,6 +135,8 @@ describe('handleCanvas — GET /api/canvas/proxy', () => {
       expect(init.method).toBe('GET');
       expect(init.headers.Authorization).toBe('Bearer tok123');
       expect(init.headers.Accept).toBe('application/json');
+      // Instructure answers 403 (HTML) to any API call without a User-Agent.
+      expect(init.headers['User-Agent']).toMatch(/^DegreeLume-Assistant\//);
       return fakeCanvasResponse({ id: 1, name: 'Sam' }, 200);
     });
     vi.stubGlobal('fetch', fetchMock);

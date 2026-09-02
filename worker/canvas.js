@@ -19,6 +19,9 @@ import { CANVAS_INSTITUTIONS, CANVAS_HOSTS } from '../src/data/canvasInstitution
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const MAX_UPSTREAM_BYTES = 2_097_152;
+// Instructure enforces a User-Agent on API requests (2026): a request without
+// one is answered 403 with an HTML page, and a Worker's fetch sends none.
+export const CANVAS_USER_AGENT = 'DegreeLume-Assistant/1.0 (+https://assistant.degreelume.com)';
 
 const RESPONSE_HEADERS = Object.freeze({
   'Content-Type': 'application/json; charset=utf-8',
@@ -123,7 +126,11 @@ async function handleProxy(request) {
   try {
     upstream = await timedFetch(`https://${host}${path}`, {
       method: 'GET',
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        'User-Agent': CANVAS_USER_AGENT,
+      },
     });
   } catch (error) {
     const timedOut = error?.name === 'AbortError';
