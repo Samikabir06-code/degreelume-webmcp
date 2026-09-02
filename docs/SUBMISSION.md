@@ -30,7 +30,7 @@ no agent can query, and nothing in it knows what the student is actually taking
 this semester.
 
 **What we built.** DegreeLume Assistant is a college counselor that an AI agent
-can operate through WebMCP. The page registers twelve tools with
+can operate through WebMCP. The page registers thirteen tools with
 `document.modelContext.registerTool()`. An agent in ChatGPT's browser (or Chrome
 with WebMCP enabled) can:
 

@@ -5,7 +5,7 @@ Challenge). This is the spec every builder on this repo works from.
 
 ## What it is
 
-A **college counselor an AI agent can call.** The page exposes twelve WebMCP
+A **college counselor an AI agent can call.** The page exposes thirteen WebMCP
 tools through `document.modelContext.registerTool()`. An agent in ChatGPT's
 desktop browser (or Chrome with the WebMCP flag) can:
 
@@ -142,7 +142,7 @@ one click. It must never be mistaken for real data: `citations[]` carry
 
 Single route. Calm DegreeLume shell (tokens in `index.css`). Sections, top to bottom:
 
-1. **Header**: wordmark "DegreeLume Assistant", one Beta line, and the **WebMCP status pill**: green "12 site tools registered" when `document.modelContext` exists; amber "WebMCP not enabled here — open in ChatGPT's browser or enable chrome://flags/#enable-webmcp-testing" otherwise. Link to "How to use with an agent" (a short modal).
+1. **Header**: wordmark "DegreeLume Assistant", one Beta line, and the **WebMCP status pill**: green "13 site tools registered" when `document.modelContext` exists; amber "WebMCP not enabled here — open in ChatGPT's browser or enable chrome://flags/#enable-webmcp-testing" otherwise. Link to "How to use with an agent" (a short modal).
 2. **Student panel** (left column on desktop): target campus/major/entry term selects; completed / in-progress course chips with a catalog search box to add; **Canvas connect** (host from `canvasInstitutions.ts` + free-text `*.instructure.com`, token field, "Connect" — and a one-click **"Load the sample student"** button + "Clear everything").
 3. **Today** (main column): current courses with grade/score/remaining weight; upcoming work (7 days) with overdue first; risk radar flags; deadlines merged list; reminders with done toggles. Each block is fed by the same `runTool` the agent uses, so the page and the agent can never disagree.
 4. **Credit-Carry** table: `compare_campuses` for the target major, all campuses, sortable, with the citation link per row and verdict chips.
@@ -192,7 +192,7 @@ Worker from `transferpro`; nothing here can clobber degreelume.com.
 
 ## Demo storyline (for the 3-minute video)
 
-1. Open in ChatGPT's browser → arrow in the address bar shows 12 site tools.
+1. Open in ChatGPT's browser → arrow in the address bar shows 13 site tools.
 2. "Load the sample student." Page fills: UCLA CS, courses, Canvas grades.
 3. Ask: *"What's due this week and is anything putting my transfer at risk?"*
    → get_upcoming_work + get_grade_risk. Page highlights PHYS 1B at risk with
