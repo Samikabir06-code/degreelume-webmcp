@@ -273,7 +273,13 @@ export function renderForAgent(out: ToolOutput | ToolError): string {
 
   // Still over the cap after array truncation: keep the prose and the
   // citations — the parts a model relays — and say the payload was cut.
+  //
+  // The room left for the payload is measured against the ACTUAL marker, not
+  // a guessed allowance. A fixed slack of 80 was 19 characters short of the
+  // marker’s real length, so a "capped" compare_campuses came back at 12,023.
   const head = parts.slice(0, -1).join('\n\n');
-  const room = Math.max(0, MAX_CHARS - head.length - 80);
-  return `${head}\n\n${payload.slice(0, room)}\n\n[payload truncated at ${MAX_CHARS} characters — call the tool with narrower arguments for the full result]`;
+  const marker = `[payload truncated at ${MAX_CHARS} characters — call the tool with narrower arguments for the full result]`;
+  const separators = 4; // the two blank-line joins around the payload
+  const room = Math.max(0, MAX_CHARS - head.length - separators - marker.length);
+  return `${head}\n\n${payload.slice(0, room)}\n\n${marker}`;
 }

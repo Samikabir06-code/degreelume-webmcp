@@ -14,6 +14,7 @@ import type { CanvasAssignmentSnapshot, CanvasCourseSnapshot } from '../lib/stor
 import { isSample, SAMPLE_CITATION } from '../lib/sampleStudent';
 import { auditFor, profileFromState, schoolSystemOf } from '../lib/profile';
 import { resolveCourseCode } from '../lib/resolve';
+import { BAD_DATE_HINT, endOfDay, parseDateInput } from '../lib/dates';
 import type { RadarCourse, RadarFlag } from '../engine/riskRadar';
 import { runRiskRadar } from '../engine/riskRadar';
 import { buildRequirementResolver } from '../engine/liveRequirements';
@@ -386,7 +387,17 @@ function reminderItems(reminders: ToolContext['state']['reminders'], now: Date, 
 
 function getDeadlines(input: DeadlinesInput, ctx: ToolContext): ToolOutput<DeadlinesData> | ToolError {
   const profile = profileFromState(ctx.state);
-  const before = input.before ? new Date(`${input.before}T23:59:59`) : new Date(ctx.now.getTime() + 365 * DAY_MS);
+  // A date we cannot read is an error naming it, never a silently different
+  // window. "2026-9-5" used to become an Invalid Date here and throw a
+  // RangeError out of .toISOString(), which reached the agent as a generic
+  // tool_failed — see src/lib/dates.ts.
+  const parsedBefore = input.before ? parseDateInput(input.before) : null;
+  if (input.before && !parsedBefore) {
+    return toolError('bad_date', `"${input.before}" is not a date I can read.`, BAD_DATE_HINT);
+  }
+  const before = parsedBefore
+    ? endOfDay(parsedBefore)
+    : new Date(ctx.now.getTime() + 365 * DAY_MS);
   const audit = profile.school && profile.major ? auditFor(profile) : null;
 
   const caveats: string[] = [];

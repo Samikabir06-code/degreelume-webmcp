@@ -225,6 +225,27 @@ describe('audit_coursework', () => {
     assertHonest(out);
   });
 
+  it('says when a course was listed as both completed and in progress', async () => {
+    // The engine drops the in-progress copy (a course cannot be both), which
+    // is right — but done silently it looks like a course went missing.
+    const out = await ok('audit_coursework', {
+      ...UCLA_CS, courses: ['MATH 190', 'CSCI 1'], inProgress: ['CSCI 1', 'MATH 191'],
+    });
+    expect(out.caveats).toContain('CSCI 1 was listed as both completed and in progress; counted as completed.');
+    const d = out.data as { rows: { id: string; status: string }[] };
+    // …and it is counted the way the caveat says.
+    expect(d.rows.find((r) => r.id === 'math-31b')!.status).toBe('in-progress');
+  });
+
+  it('names repeated entries it merged rather than shortening the list quietly', async () => {
+    const out = await ok('audit_coursework', {
+      ...UCLA_CS, courses: ['math190', 'MATH 190', 'MATH-190', 'CSCI 1'],
+    });
+    expect(out.caveats.some((c) => c.includes('Duplicate entries merged: MATH 190 ×3'))).toBe(true);
+    assertHonest(out);
+  });
+
+
   it('one bad course code fails the whole call rather than auditing a shorter list', async () => {
     const out = await TRANSFER_IMPLS.audit_coursework({ ...UCLA_CS, courses: ['MATH 190', 'NOPE 1'] }, ctx());
     expect(isToolError(out)).toBe(true);
@@ -320,6 +341,15 @@ describe('compare_campuses', () => {
     expect(row.electiveCourses[8]).toBe('+4 more');
     expect(row.electiveCourses.slice(0, 8).every((c) => courses.includes(c))).toBe(true);
   });
+
+  it('carries the same overlap and duplicate notes as the single-campus audit', async () => {
+    const out = await ok('compare_campuses', {
+      major: 'cs', courses: ['MATH 190', 'MATH 190', 'CSCI 1'], inProgress: ['CSCI 1'],
+    });
+    expect(out.caveats.some((c) => c.includes('Duplicate entries merged: MATH 190 ×2'))).toBe(true);
+    expect(out.caveats).toContain('CSCI 1 was listed as both completed and in progress; counted as completed.');
+  });
+
 
   it('restricts to the campuses asked for', async () => {
     const out = await ok('compare_campuses', { courses: COURSES, major: 'cs', campuses: ['UCLA', 'Cal Poly Pomona'] });

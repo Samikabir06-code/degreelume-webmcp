@@ -27,8 +27,8 @@ import {
   auditFor, campusesWithData, profileFromState, COLLEGE_ID, CATALOG,
 } from '../lib/profile';
 import {
-  campusCandidates, courseCandidates, majorCandidates, resolveCampus, resolveCourseCodeDetailed,
-  resolveCourseList, resolveMajor, SLICE_MAJOR_IDS,
+  campusCandidates, courseCandidates, duplicateCaveats, majorCandidates, resolveCampus,
+  resolveCourseCodeDetailed, resolveCourseList, resolveMajor, SLICE_MAJOR_IDS,
 } from '../lib/resolve';
 
 // ── citations and caveats ────────────────────────────────────────────────────
@@ -160,18 +160,28 @@ function areaShape(a: AuditedArea) {
 function courseworkFrom(
   ctx: ToolContext,
   input: { courses?: string[]; inProgress?: string[] },
-): { completed: string[]; inProgress: string[]; renamed: { given: string; code: string }[] } | ToolError {
+): { completed: string[]; inProgress: string[]; renamed: { given: string; code: string }[]; notes: string[] } | ToolError {
   const renamed: { given: string; code: string }[] = [];
   const unknown: string[] = [];
+  const notes: string[] = [];
   const take = (given: string[] | undefined, fallback: string[]): string[] => {
     if (!given) return fallback;
     const r = resolveCourseList(given);
     renamed.push(...r.renamed);
     unknown.push(...r.unknown);
+    notes.push(...duplicateCaveats(r.duplicates));
     return r.codes;
   };
   const completed = take(input.courses, ctx.state.completed);
   const inProgress = take(input.inProgress, ctx.state.inProgress);
+  // The engine drops a course from in-progress when it is also completed
+  // (runAudit does this deliberately — one course cannot be both). That is the
+  // right resolution, but done silently it looks like a course went missing,
+  // so the overlap is named.
+  const both = completed.filter((c) => inProgress.includes(c));
+  for (const code of both) {
+    notes.push(`${code} was listed as both completed and in progress; counted as completed.`);
+  }
   if (unknown.length > 0) {
     const hints = unknown
       .map((u) => `${u} → ${courseCandidates(u, 3).map((c) => c.code).join(', ') || 'no near match'}`)
@@ -182,7 +192,7 @@ function courseworkFrom(
       `Nearest catalog codes — ${hints}.`,
     );
   }
-  return { completed, inProgress, renamed };
+  return { completed, inProgress, renamed, notes };
 }
 
 function renameCaveats(renamed: { given: string; code: string }[]): string[] {
@@ -434,7 +444,7 @@ const audit_coursework = (
       `${geOpen === 0 ? `${t.gePatternName} general education is complete.` : `${geOpen} ${t.gePatternName} area${geOpen === 1 ? ' is' : 's are'} still open.`} ` +
       `The engine's verdict is ${t.verdict}, against a ${t.gpaTarget.toFixed(1)} GPA target.`;
 
-  const caveats = [...caveatsFor(set, campus.name), ...renameCaveats(work.renamed), ...audit.warnings];
+  const caveats = [...caveatsFor(set, campus.name), ...renameCaveats(work.renamed), ...work.notes, ...audit.warnings];
   if (audit.needsReview.length > 0) {
     caveats.push(`${audit.needsReview.length} requirement${audit.needsReview.length === 1 ? '' : 's'} could not be verified from our catalog snapshot — those are gaps in our data, not rulings about the student, and each carries a question for a counselor.`);
   }
@@ -561,7 +571,7 @@ const compare_campuses = (
       `${best.creditsThatCount} of the student's courses count toward the major or general education at ${best.campusName}; ${best.electivesOnly} transfer as electives there. Each row cites the agreement it rests on.`;
 
   const unreviewed = rows.filter((r) => r.provenance === 'unreviewed').length;
-  const caveats: string[] = [...renameCaveats(work.renamed)];
+  const caveats: string[] = [...renameCaveats(work.renamed), ...work.notes];
   if (unreviewed > 0) {
     caveats.push(`${unreviewed} of these ${rows.length} agreements were machine-transcribed from ASSIST and have not been read row-by-row by a person; each row carries its own provenance.`);
   }

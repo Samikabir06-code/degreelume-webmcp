@@ -9,16 +9,18 @@
 // an empty profile reads as empty. "No campus chosen" is a real answer, and
 // this build says it rather than defaulting to a campus nobody picked.
 
-import type { CourseCode, MajorChoice, SchoolId } from '../types';
-import type { ToolError, ToolOutput } from './contract';
+import type { CourseCode, MajorChoice, RequirementSet, SchoolId } from '../types';
+import type { Citation, ToolError, ToolOutput } from './contract';
 import { toolError, type ToolContext, type ToolImplMap } from './runtime';
 import { newId, type PageState, type Reminder } from '../lib/store';
 import { auditFor, profileFromState } from '../lib/profile';
 import { getMajor } from '../data/majors';
 import { getSchool } from '../data/schools';
 import { resolveGePattern } from '../data/gePatterns';
-import { courseCandidates, resolveCourseList } from '../lib/resolve';
-import { resolveCampusArg, resolveMajorArg } from './transfer';
+import { courseCandidates, duplicateCaveats, resolveCourseList } from '../lib/resolve';
+import { BAD_DATE_HINT, parseDateInput } from '../lib/dates';
+import { agreementCitation, caveatsFor, resolveCampusArg, resolveMajorArg } from './transfer';
+import { getRequirements } from '../data/requirements';
 
 function isErr(x: unknown): x is ToolError {
   return typeof x === 'object' && x !== null && 'error' in x;
@@ -28,15 +30,20 @@ function isErr(x: unknown): x is ToolError {
 
 // One sentence about where the student stands, or null when there is nothing
 // honest to say yet. Never a verdict the engine did not produce.
-function headlineFor(state: PageState): string | null {
+function headlineFor(state: PageState): { headline: string; set: RequirementSet } | null {
   const profile = profileFromState(state);
   if (!profile.school || !profile.major) return null;
   const audit = auditFor(profile);
   const t = audit?.transfer;
   if (!t) return null;
+  const set = getRequirements(profile.school, profile.major, profile.college);
+  if (!set) return null;
   const school = getSchool(profile.school);
   const major = getMajor(profile.major);
-  return `${t.prepDone} of ${t.requiredCount} required lower-division preparation slots complete for ${major?.name ?? profile.major} at ${school?.name ?? profile.school}; the engine reads this as ${t.verdict}.`;
+  return {
+    headline: `${t.prepDone} of ${t.requiredCount} required lower-division preparation slots complete for ${major?.name ?? profile.major} at ${school?.name ?? profile.school}; the engine reads this as ${t.verdict}.`,
+    set,
+  };
 }
 
 function statusData(state: PageState) {
@@ -79,7 +86,7 @@ function statusData(state: PageState) {
       open: state.reminders.filter((r) => !r.done).length,
       done: state.reminders.filter((r) => r.done).length,
     },
-    headline: headlineFor(state),
+    headline: headlineFor(state)?.headline ?? null,
   };
 }
 
@@ -117,11 +124,19 @@ const SAMPLE_CITATION = {
 };
 
 function statusOutput(state: PageState): ToolOutput {
+  // A headline states a VERDICT, and a verdict without its source is exactly
+  // what hard rule 3 forbids. Whenever an audit produced the headline, the
+  // agreement it ran on is cited alongside it — with its year and whether a
+  // person has read it.
+  const head = headlineFor(state);
+  const citations: Citation[] = [];
+  if (head) citations.push(agreementCitation(head.set));
+  if (state.canvas?.source === 'sample') citations.push(SAMPLE_CITATION);
   return {
     summary: statusSummary(state),
     data: statusData(state),
-    citations: state.canvas?.source === 'sample' ? [SAMPLE_CITATION] : [],
-    caveats: statusCaveats(state),
+    citations,
+    caveats: [...statusCaveats(state), ...(head ? caveatsFor(head.set, getSchool(state.target.campus)?.name ?? state.target.campus) : [])],
   };
 }
 
@@ -134,7 +149,7 @@ const get_student_status = (_input: unknown, ctx: ToolContext): ToolOutput => st
 // A coursework list is replaced wholesale when given, and every code in it must
 // resolve. A list where one code is dropped silently is a transcript the
 // student did not give us.
-function validateList(label: string, given: string[]): { codes: CourseCode[]; renamed: { given: string; code: string }[] } | ToolError {
+function validateList(label: string, given: string[]): { codes: CourseCode[]; renamed: { given: string; code: string }[]; notes: string[] } | ToolError {
   const r = resolveCourseList(given);
   if (r.unknown.length > 0) {
     const hints = r.unknown
@@ -146,7 +161,7 @@ function validateList(label: string, given: string[]): { codes: CourseCode[]; re
       `Nearest catalog codes — ${hints}.`,
     );
   }
-  return { codes: r.codes, renamed: r.renamed };
+  return { codes: r.codes, renamed: r.renamed, notes: duplicateCaveats(r.duplicates) };
 }
 
 const set_student_target = (
@@ -157,6 +172,7 @@ const set_student_target = (
   const target = { ...ctx.state.target };
   const changes: string[] = [];
   const renamed: { given: string; code: string }[] = [];
+  const notes: string[] = [];
 
   if (input.campus !== undefined && String(input.campus).trim() !== '') {
     const campus = resolveCampusArg(input.campus, '');
@@ -184,6 +200,7 @@ const set_student_target = (
     if (isErr(r)) return r;
     patch.completed = r.codes;
     renamed.push(...r.renamed);
+    notes.push(...r.notes);
     changes.push(`completed coursework replaced with ${r.codes.length} course${r.codes.length === 1 ? '' : 's'}`);
   }
   if (input.inProgressCourses !== undefined) {
@@ -191,6 +208,7 @@ const set_student_target = (
     if (isErr(r)) return r;
     patch.inProgress = r.codes;
     renamed.push(...r.renamed);
+    notes.push(...r.notes);
     changes.push(`in-progress coursework replaced with ${r.codes.length} course${r.codes.length === 1 ? '' : 's'}`);
   }
 
@@ -210,7 +228,11 @@ const set_student_target = (
   return {
     ...out,
     summary: `Updated the student profile on the page: ${changes.join('; ')}. ${out.summary}`,
-    caveats: [...out.caveats, ...renamed.map((r) => `${r.given} is now numbered ${r.code} at El Camino; it was recorded as ${r.code}.`)],
+    caveats: [
+      ...out.caveats,
+      ...notes,
+      ...renamed.map((r) => `${r.given} is now numbered ${r.code} at El Camino; it was recorded as ${r.code}.`),
+    ],
   };
 };
 
@@ -220,15 +242,6 @@ function reminderShape(r: Reminder) {
   return { id: r.id, title: r.title, due: r.due, note: r.note ?? null, url: r.url ?? null, done: r.done, createdBy: r.createdBy, createdAt: r.createdAt };
 }
 
-// "2026-09-30" and "2026-09-30T17:00:00Z" both parse; anything else is an
-// error rather than a reminder that silently never comes due.
-function normalizeDue(input: string): string | null {
-  const raw = String(input ?? '').trim();
-  if (!raw) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
 
 const add_reminder = (
   input: { title?: string; due?: string; note?: string; url?: string },
@@ -236,14 +249,13 @@ const add_reminder = (
 ): ToolOutput | ToolError => {
   const title = String(input.title ?? '').trim();
   if (!title) return toolError('missing_title', 'A reminder needs a title.', 'Pass title and due.');
-  const due = normalizeDue(input.due ?? '');
-  if (!due) {
-    return toolError(
-      'bad_date',
-      `"${input.due ?? ''}" is not a date I can read.`,
-      'Pass an ISO date, e.g. "2026-09-30", or a full ISO date-time.',
-    );
+  // One date parser for the whole build (../lib/dates), so add_reminder's
+  // `due` and get_deadlines' `before` can never disagree about what a date is.
+  const parsedDue = parseDateInput(input.due);
+  if (!parsedDue) {
+    return toolError('bad_date', `"${input.due ?? ''}" is not a date I can read.`, BAD_DATE_HINT);
   }
+  const due = parsedDue.iso;
   const reminder: Reminder = {
     id: newId(),
     title,

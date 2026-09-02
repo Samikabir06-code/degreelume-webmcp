@@ -268,14 +268,20 @@ export function courseCandidates(input: string, n = 3): Course[] {
 // Resolve a whole list, keeping the unresolvable ones separate. Every tool that
 // accepts coursework uses this: a list with one bad code is an error naming
 // that code, never a silently shortened list.
-export function resolveCourseList(inputs: readonly string[]): {
+export interface ResolvedCourseList {
   codes: string[];
   renamed: { given: string; code: string }[];
   unknown: string[];
-} {
+  /** Codes given more than once — including under two spellings of the same
+   *  course ("math190" and "MATH 190") or its old and new numbers. */
+  duplicates: { code: string; count: number }[];
+}
+
+export function resolveCourseList(inputs: readonly string[]): ResolvedCourseList {
   const codes: string[] = [];
   const renamed: { given: string; code: string }[] = [];
   const unknown: string[] = [];
+  const seen = new Map<string, number>();
   for (const raw of inputs) {
     const hit = resolveCourseCodeDetailed(raw);
     if (!hit) {
@@ -283,9 +289,24 @@ export function resolveCourseList(inputs: readonly string[]): {
       continue;
     }
     if (hit.viaFormerCode) renamed.push({ given: hit.viaFormerCode, code: hit.course.code });
-    if (!codes.includes(hit.course.code)) codes.push(hit.course.code);
+    const code = hit.course.code;
+    seen.set(code, (seen.get(code) ?? 0) + 1);
+    if (!codes.includes(code)) codes.push(code);
   }
-  return { codes, renamed, unknown };
+  // Merging a repeat is right — a course taken once is one course — but doing
+  // it silently is not: a student who pasted their transcript twice, or listed
+  // ECON 101 and ECON C2002 believing them to be two classes, should be told
+  // which entries collapsed rather than left wondering where their units went.
+  const duplicates = [...seen.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([code, count]) => ({ code, count }));
+  return { codes, renamed, unknown, duplicates };
+}
+
+// The caveat both callers show for merged repeats, so they word it the same.
+export function duplicateCaveats(duplicates: { code: string; count: number }[]): string[] {
+  if (duplicates.length === 0) return [];
+  return [`Duplicate entries merged: ${duplicates.map((d) => `${d.code} ×${d.count}`).join(', ')}. Each course was counted once.`];
 }
 
 // Campuses that hold an agreement for this major — re-exported so a tool that

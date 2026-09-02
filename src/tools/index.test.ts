@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { runTool, exampleInput, renderForAgent, validateInput, TOOLS, TOOL_NAMES, isToolError } from './index';
 import { toolDescriptor } from './contract';
 import { getState, resetState } from '../lib/store';
+import { loadSampleStudent } from '../lib/sampleStudent';
 
 beforeEach(() => { resetState(); });
 
@@ -167,10 +168,23 @@ describe('renderForAgent', () => {
   });
 
   it('stays under the size cap even for the widest comparison', async () => {
+    // Exactly the cap, not "about" it: the truncation used to reserve a fixed
+    // 80 characters for a marker 99 characters long, so a "capped" render came
+    // back at 12,023 — past the budget the WebMCP layer was promised.
     const out = await runTool('compare_campuses', { courses: ['MATH 190', 'MATH 191', 'CSCI 1', 'CSCI 2'], major: 'cs' });
     const text = renderForAgent(out);
-    expect(text.length).toBeLessThanOrEqual(12_200);
+    expect(text.length).toBeLessThanOrEqual(12_000);
     expect(text.startsWith(isToolError(out) ? out.message : out.summary)).toBe(true);
+  });
+
+  it('every tool, on the sample student, renders within the cap', async () => {
+    loadSampleStudent(new Date('2026-09-02T19:00:00Z'));
+    for (const name of TOOL_NAMES) {
+      const out = await runTool(name, exampleInput(name));
+      const text = renderForAgent(out);
+      expect(text.length, `${name} rendered ${text.length}`).toBeLessThanOrEqual(12_000);
+      expect(text.length, name).toBeGreaterThan(0);
+    }
   });
 
   it('keeps the prose when it has to cut the payload', () => {

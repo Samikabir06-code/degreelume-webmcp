@@ -207,6 +207,38 @@ describe('get_deadlines', () => {
     }
   });
 
+  it('accepts an unpadded calendar day instead of crashing on it', async () => {
+    // "2026-9-5" passes the JSON schema (it is a string), and used to become
+    // new Date("2026-9-5T23:59:59") — an Invalid Date whose .toISOString()
+    // threw a RangeError the agent saw as a generic tool_failed.
+    loadSampleStudent(FIXED_NOW);
+    const out = await SCHOOL_IMPLS.get_deadlines({ before: '2026-9-5' }, ctx());
+    expect(isToolError(out)).toBe(false);
+    if (isToolError(out)) return;
+    const data = out.data as DeadlinesData;
+    // Normalised to the END of that day, so things due on the 5th are included.
+    expect(data.before).toBe(new Date(2026, 8, 5, 23, 59, 59, 999).toISOString());
+    const cutoff = new Date(data.before).getTime();
+    for (const item of data.items) {
+      if (item.date) expect(new Date(item.date).getTime()).toBeLessThanOrEqual(cutoff);
+    }
+  });
+
+  it('a date it cannot read is bad_date with a hint, not tool_failed', async () => {
+    for (const before of ['soonish', '2026-02-31', '09/05/2026', '']) {
+      const out = await SCHOOL_IMPLS.get_deadlines({ before }, ctx());
+      if (before === '') {
+        // An empty string is "no window given", not a broken one.
+        expect(isToolError(out), before).toBe(false);
+        continue;
+      }
+      expect(isToolError(out), before).toBe(true);
+      if (!isToolError(out)) continue;
+      expect(out.error, before).toBe('bad_date');
+      expect(out.hint, before).toContain('YYYY-MM-DD');
+    }
+  });
+
   it('falls back to the generic UC+CSU calendar with no target set, and caveats it', async () => {
     const out = await SCHOOL_IMPLS.get_deadlines({}, ctx());
     expect(isToolError(out)).toBe(false);

@@ -48,6 +48,29 @@ describe('get_student_status', () => {
     expect(out.caveats.some((c) => /not a default/.test(c))).toBe(true);
   });
 
+  it('a headline that states a verdict cites the agreement behind it', async () => {
+    // Hard rule 3: a verdict without its source is exactly what this build
+    // must never emit. get_student_status used to return citations: [] while
+    // its summary named a verdict.
+    const h = makeCtx({
+      target: { campus: 'ucla', major: 'cs', entryTerm: 'Fall 2024' },
+      completed: ['MATH 190'],
+    });
+    const out = await ok(STATE_IMPLS, 'get_student_status', {}, h.ctx);
+    const assist = out.citations.find((c) => c.sourceName.includes('ASSIST'));
+    expect(assist, 'no agreement citation beside the headline').toBeDefined();
+    expect(assist!.catalogYear.length).toBeGreaterThan(0);
+    expect(['unreviewed', 'verified', 'demo']).toContain(assist!.verification);
+    // …and the unreviewed-transcription caveat travels with it.
+    expect(out.caveats.some((c) => /machine-transcribed from ASSIST/.test(c))).toBe(true);
+  });
+
+  it('an empty page cites nothing, because it claims nothing', async () => {
+    const out = await ok(STATE_IMPLS, 'get_student_status', {}, harness.ctx);
+    expect(out.citations).toEqual([]);
+    expect((out.data as { headline: string | null }).headline).toBeNull();
+  });
+
   it('a set target produces a headline in the engine\'s own vocabulary', async () => {
     const h = makeCtx({
       target: { campus: 'ucla', major: 'cs', entryTerm: 'Fall 2024' },
@@ -82,6 +105,15 @@ describe('set_student_target', () => {
     const h = makeCtx({ completed: ['MATH 190', 'CSCI 1'] });
     await ok(STATE_IMPLS, 'set_student_target', { completedCourses: ['PHYS 1A'] }, h.ctx);
     expect(h.current().completed).toEqual(['PHYS 1A']);
+  });
+
+  it('names the repeats it merged instead of quietly shortening the list', async () => {
+    const out = await ok(STATE_IMPLS, 'set_student_target', {
+      completedCourses: ['math190', 'MATH 190', 'MATH-190', 'ECON 101', 'ECON C2002', 'CSCI 1'],
+    }, harness.ctx);
+    expect(harness.current().completed).toEqual(['MATH 190', 'ECON C2002', 'CSCI 1']);
+    expect(out.caveats.some((c) => c.includes('MATH 190 ×3'))).toBe(true);
+    expect(out.caveats.some((c) => c.includes('ECON C2002 ×2'))).toBe(true);
   });
 
   it('rejects an unknown course and changes nothing', async () => {

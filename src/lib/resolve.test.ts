@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveCampus, campusCandidates, resolveMajor, majorCandidates,
   resolveCourseCode, resolveCourseCodeDetailed, courseCandidates,
-  normalizeCourseCode, resolveCourseList,
+  normalizeCourseCode, resolveCourseList, duplicateCaveats,
 } from './resolve';
 import { SCHOOLS } from '../data/schools';
 
@@ -138,8 +138,26 @@ describe('resolveCourseList', () => {
     expect(r.renamed).toEqual([{ given: 'ECON 101', code: 'ECON C2002' }]);
   });
 
-  it('de-duplicates a course given twice under both of its numbers', () => {
+  it('de-duplicates a course given twice under both of its numbers, and says so', () => {
     const r = resolveCourseList(['ECON 101', 'ECON C2002']);
     expect(r.codes).toEqual(['ECON C2002']);
+    // Merging is right — one course is one course — but silence is not: a
+    // student who listed both numbers believing them two classes needs to know.
+    expect(r.duplicates).toEqual([{ code: 'ECON C2002', count: 2 }]);
+    expect(duplicateCaveats(r.duplicates)).toEqual([
+      'Duplicate entries merged: ECON C2002 ×2. Each course was counted once.',
+    ]);
+  });
+
+  it('counts repeats across spelling variants of one code', () => {
+    const r = resolveCourseList(['math190', 'MATH 190', 'MATH-190', 'CSCI 1']);
+    expect(r.codes).toEqual(['MATH 190', 'CSCI 1']);
+    expect(r.duplicates).toEqual([{ code: 'MATH 190', count: 3 }]);
+  });
+
+  it('reports no duplicates when there are none', () => {
+    const r = resolveCourseList(['MATH 190', 'CSCI 1']);
+    expect(r.duplicates).toEqual([]);
+    expect(duplicateCaveats(r.duplicates)).toEqual([]);
   });
 });
