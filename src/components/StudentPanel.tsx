@@ -7,6 +7,7 @@ import { canvasHosts, connectCanvas, disconnectCanvas, refreshCanvas } from '../
 import { isSample, loadSampleStudent } from '../lib/sampleStudent';
 import { Button, Card, Chip, Empty, Field, Input, Pill, Select } from './ui';
 import { fmtDateTime } from '../lib/format';
+import { useAgentBlock } from '../lib/useAgentActivity';
 
 const MAJOR_OPTIONS = [
   { id: 'business', name: 'Business Administration' },
@@ -141,10 +142,18 @@ export function StudentPanel({ state }: { state: PageState }) {
 
   const canvas = state.canvas;
   const sample = isSample(state);
+  // set_student_target is the one tool that writes here, so this is the block
+  // that lights up when an agent picks the campus or the major.
+  const targetFlash = useAgentBlock('student', 'block-student');
 
   return (
     <div className="space-y-4">
-      <Card title="Your transfer target" subtitle="Everything on this page defaults to what you set here.">
+      <Card
+        id="block-student"
+        title="Your transfer target"
+        subtitle="Everything on this page defaults to what you set here."
+        flash={targetFlash}
+      >
         <div className="space-y-3">
           <Field label="Target campus">
             <Select

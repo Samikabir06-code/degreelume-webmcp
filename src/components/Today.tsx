@@ -6,6 +6,7 @@ import { dataKey, usePassiveTool } from './passive';
 import { Bar, Button, Card, Empty, Input, Pill, Select, Spinner, type Tone } from './ui';
 import { cx, fmtDate, fmtDateTime, num, pct, relative } from '../lib/format';
 import { useFlash } from '../lib/useFlash';
+import { useAgentBlock } from '../lib/useAgentActivity';
 
 // ── shapes the tools return (docs/PLAN.md §Tool semantics) ──
 interface UpcomingWork {
@@ -83,10 +84,14 @@ function CurrentCourses({ state, catalogCodes }: { state: PageState; catalogCode
   const canvas = state.canvas;
   const active = canvas?.courses.filter((c) => c.enrollmentState === 'active') ?? [];
   const done = canvas?.courses.filter((c) => c.enrollmentState === 'completed') ?? [];
-  const flash = useFlash(canvas?.fetchedAt ?? null);
+  // Two signals, one highlight: the data changed, or a tool call named this block.
+  const dataFlash = useFlash(canvas?.fetchedAt ?? null);
+  const callFlash = useAgentBlock('courses', 'block-courses');
+  const flash = dataFlash || callFlash;
 
   return (
     <Card
+      id="block-courses"
       title="Your courses"
       subtitle={canvas ? `${canvas.host} · fetched ${fmtDateTime(canvas.fetchedAt)}` : undefined}
       action={canvas ? <Pill tone={canvas.source === 'sample' ? 'warn' : 'ok'}>{canvas.source}</Pill> : null}
@@ -214,12 +219,16 @@ function UpcomingWorkBlock({
   connected: boolean;
 }) {
   const data = result.output?.data;
-  const flash = useFlash(data);
+  // Two signals, one highlight: the data changed, or a tool call named this block.
+  const dataFlash = useFlash(data);
+  const callFlash = useAgentBlock('due', 'block-due');
+  const flash = dataFlash || callFlash;
   const overdue = data?.overdue ?? [];
   const upcoming = (data?.items ?? []).filter((i) => !overdue.some((o) => o.id === i.id));
 
   return (
     <Card
+      id="block-due"
       title="Due in the next 7 days"
       subtitle={result.output?.summary}
       action={overdue.length ? <Pill tone="risk">{overdue.length} overdue</Pill> : null}
@@ -286,10 +295,14 @@ function RiskBlock({
   hasTarget: boolean;
 }) {
   const data = result.output?.data;
-  const flash = useFlash(data);
+  // Two signals, one highlight: the data changed, or a tool call named this block.
+  const dataFlash = useFlash(data);
+  const callFlash = useAgentBlock('risk', 'block-risk');
+  const flash = dataFlash || callFlash;
 
   return (
     <Card
+      id="block-risk"
       title="Grade risk radar"
       subtitle={result.output?.summary}
       action={
@@ -366,11 +379,19 @@ function RiskBlock({
 
 function DeadlinesBlock({ result }: { result: ReturnType<typeof usePassiveTool<Deadlines>> }) {
   const data = result.output?.data;
-  const flash = useFlash(data);
+  // Two signals, one highlight: the data changed, or a tool call named this block.
+  const dataFlash = useFlash(data);
+  const callFlash = useAgentBlock('deadlines', 'block-deadlines');
+  const flash = dataFlash || callFlash;
   const items = data?.items ?? [];
 
   return (
-    <Card title="Everything before the deadline" subtitle={result.output?.summary} flash={flash}>
+    <Card
+      id="block-deadlines"
+      title="Everything before the deadline"
+      subtitle={result.output?.summary}
+      flash={flash}
+    >
       {result.loading ? (
         <Spinner label="Merging deadlines" />
       ) : result.error ? (
@@ -420,7 +441,10 @@ function Reminders({ state }: { state: PageState }) {
   const [due, setDue] = useState('');
   const open = state.reminders.filter((r) => !r.done);
   const done = state.reminders.filter((r) => r.done);
-  const flash = useFlash(state.reminders.length);
+  // Two signals, one highlight: the data changed, or a tool call named this block.
+  const dataFlash = useFlash(state.reminders);
+  const callFlash = useAgentBlock('reminders', 'block-reminders');
+  const flash = dataFlash || callFlash;
 
   async function add() {
     if (!title.trim() || !due) return;
@@ -430,10 +454,12 @@ function Reminders({ state }: { state: PageState }) {
   }
 
   return (
-    <Card title="Reminders" subtitle="Yours, or ones your agent added for you." flash={flash}>
+    <Card id="block-reminders" title="Reminders" subtitle="Yours, or ones your agent added for you." flash={flash}>
       <div className="space-y-3">
         {state.reminders.length === 0 ? (
-          <Empty>No reminders yet.</Empty>
+          <Empty>
+            No reminders yet. Add one below, or ask your agent — “remind me to file the UC TAG before Sep 30”.
+          </Empty>
         ) : (
           <ul className="space-y-1.5">
             {[...open, ...done].map((r) => (

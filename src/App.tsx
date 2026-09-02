@@ -3,6 +3,7 @@ import { usePageState } from './lib/store';
 import { registerAllTools } from './webmcp/register';
 import { ECC_COURSES } from './data/courses';
 import { Header } from './components/Header';
+import { Intro } from './components/Intro';
 import { StudentPanel } from './components/StudentPanel';
 import { Today } from './components/Today';
 import { CreditCarry } from './components/CreditCarry';
@@ -13,7 +14,7 @@ import { Footer } from './components/Footer';
 export default function App() {
   const state = usePageState();
 
-  // Hand the twelve tools to the browser's Model Context API. Idempotent, so
+  // Hand the thirteen tools to the browser's Model Context API. Idempotent, so
   // StrictMode's double mount in dev registers nothing twice.
   useEffect(() => {
     void registerAllTools();
@@ -34,6 +35,7 @@ export default function App() {
           {/* min-w-0: without it a grid column refuses to shrink below its
               widest child, and the tables would push the page sideways. */}
           <div className="min-w-0 space-y-4">
+            <Intro state={state} />
             <Today state={state} catalogCodes={catalogCodes} />
             <CreditCarry state={state} />
             <ActivityFeed state={state} />

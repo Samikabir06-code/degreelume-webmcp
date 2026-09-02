@@ -39,6 +39,8 @@ interface GradeRiskData {
 interface DeadlineItem {
   kind: 'application' | 'coursework' | 'canvas' | 'reminder';
   date: string | null;
+  label: string;
+  source?: { name: string; url: string };
 }
 
 interface DeadlinesData {
@@ -212,6 +214,24 @@ describe('get_deadlines', () => {
     expect(out.caveats.some((c) => c.includes('generic UC and CSU calendar'))).toBe(true);
     const data = out.data as DeadlinesData;
     expect(data.items.some((i) => i.kind === 'application')).toBe(true);
+  });
+
+  it('names the publisher in source.name, not the item label', async () => {
+    const out = await SCHOOL_IMPLS.get_deadlines({}, ctx());
+    expect(isToolError(out)).toBe(false);
+    if (isToolError(out)) return;
+    const data = out.data as DeadlinesData;
+    const application = data.items.filter((i) => i.kind === 'application');
+    expect(application.length).toBeGreaterThan(0);
+    for (const item of application) {
+      expect(item.source).toBeDefined();
+      expect(item.source?.name).not.toBe(item.label);
+      expect(item.source?.name).not.toMatch(/^https?:/);
+    }
+    const uc = application.find((i) => i.source?.url.includes('admission.universityofcalifornia.edu'));
+    expect(uc?.source?.name).toBe('UC admissions: dates and deadlines');
+    const csu = application.find((i) => i.source?.url.includes('calstate.edu'));
+    expect(csu?.source?.name).toBe('Cal State Apply');
   });
 
   it('includes SAMPLE_CITATION and the sample caveat for the sample student', async () => {

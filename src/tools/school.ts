@@ -263,6 +263,29 @@ interface DeadlinesData {
   items: DeadlineItem[];
 }
 
+// A citation names the publisher, not the thing being cited: `source.name` set
+// to the item's own label made the page print the label twice ("UC TAG
+// deadline · UC TAG deadline"). Name the site the rule came from instead.
+const DEADLINE_SOURCE_NAMES: Array<[string, string]> = [
+  ['admission.universityofcalifornia.edu', 'UC admissions: dates and deadlines'],
+  ['calstate.edu', 'Cal State Apply'],
+  ['elcamino.edu', 'El Camino College'],
+];
+
+export function deadlineSourceName(sourceUrl: string): string {
+  let host: string;
+  try {
+    host = new URL(sourceUrl).hostname;
+  } catch {
+    return sourceUrl;
+  }
+  const bare = host.replace(/^www\./, '');
+  for (const [suffix, name] of DEADLINE_SOURCE_NAMES) {
+    if (bare === suffix || bare.endsWith(`.${suffix}`)) return name;
+  }
+  return bare;
+}
+
 // DeadlineRule.category is 'application' | 'tag' | 'college' — every one of
 // them is a calendar cutoff the student files somewhere, and the contract's
 // item kinds have no separate 'tag'/'college' bucket, so all three collapse
@@ -275,7 +298,7 @@ function engineItemToDeadlineItem(d: UpcomingDeadline): DeadlineItem {
     action: d.action,
     hard: d.hard,
     daysLeft: d.daysLeft,
-    source: { name: d.label, url: d.sourceUrl },
+    source: { name: deadlineSourceName(d.sourceUrl), url: d.sourceUrl },
     context: d.context,
   };
 }

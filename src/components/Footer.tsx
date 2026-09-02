@@ -24,6 +24,18 @@ export function Footer() {
           </a>
           .
         </p>
+        <p className="mt-3 text-xs leading-relaxed text-faint">
+          Built for the WebMCP Challenge, September 2026 —{' '}
+          <a
+            href={REPO}
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-line-strong underline-offset-2 hover:text-ink hover:decoration-accent"
+          >
+            github.com/Samikabir06-code/degreelume-webmcp
+          </a>
+          .
+        </p>
       </div>
     </footer>
   );

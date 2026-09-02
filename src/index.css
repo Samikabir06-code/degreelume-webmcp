@@ -44,3 +44,7 @@
 
 html { color-scheme: light; }
 body { @apply bg-paper text-ink font-sans antialiased; }
+
+/* The header is sticky, so a block scrolled into view — by an agent's tool
+   call, or by an anchor link — has to stop clear of it, not under it. */
+main section[id] { scroll-margin-top: 6.5rem; }

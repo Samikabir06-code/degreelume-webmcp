@@ -48,6 +48,7 @@ interface ModelContext {
 interface DegreelumeConsoleApi {
   tools: string[];
   run: (name: string, input?: unknown) => Promise<unknown>;
+  simulateAgentCall: (name: string, input?: unknown) => Promise<unknown>;
   status: () => WebMcpStatus;
 }
 
@@ -104,6 +105,11 @@ function exposeConsoleApi() {
   window.__degreelume = {
     tools: [...TOOL_NAMES],
     run: (name: string, input: unknown = {}) => runTool(name, input, 'console'),
+    // Same call, recorded as an agent's. In a browser with no Model Context
+    // API there is no other way to see what the page does when an agent uses
+    // it — the toast, the flash, the scroll — so this is how the demo (and
+    // anyone reading along) exercises that path.
+    simulateAgentCall: (name: string, input: unknown = {}) => runTool(name, input, 'agent'),
     status: webMcpStatus,
   };
 }

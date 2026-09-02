@@ -3,13 +3,17 @@ import type { PageState } from '../lib/store';
 import { Card, Empty, Pill } from './ui';
 import { cx, shortJson } from '../lib/format';
 import { useFlash } from '../lib/useFlash';
+import { useAgentBlock } from '../lib/useAgentActivity';
 
 export function ActivityFeed({ state }: { state: PageState }) {
   const [open, setOpen] = useState<string | null>(null);
-  const flash = useFlash(state.activity[0]?.id ?? null);
+  const dataFlash = useFlash(state.activity[0]?.id ?? null);
+  const callFlash = useAgentBlock('activity', 'block-activity');
+  const flash = dataFlash || callFlash;
 
   return (
     <Card
+      id="block-activity"
       title="What your agent did on this page"
       subtitle="Every tool call, newest first. Nothing on this page was guessed — each line is an answer the engine computed."
       action={state.activity.length ? <Pill tone="muted">{state.activity.length}</Pill> : null}
