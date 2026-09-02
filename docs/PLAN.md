@@ -199,8 +199,8 @@ Worker from `transferpro`; nothing here can clobber degreelume.com.
    the needed remaining average and the C-or-better rule cited.
 4. Ask: *"If I applied to every UC and CSU you cover for CS, where do my
    classes count the most?"* → compare_campuses. The Credit-Carry table sorts.
-5. Ask: *"Why doesn't PHYS 1A count at Cal Poly Pomona?"* → explain_requirement
+5. Ask: *"Why doesn't CSCI 1 count at Cal Poly Pomona?"* → explain_requirement
    / check_course_transfer with the agreement row and year.
-6. Ask: *"Remind me to file TAG before Sep 30."* → add_reminder; page shows it.
+6. Ask: *"What has to happen before the UC application deadline? Add a reminder for it."* → add_reminder; page shows it.
 7. Close on the activity feed: every answer came from a tool call the page
    executed; nothing was guessed.

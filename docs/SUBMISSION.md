@@ -83,8 +83,8 @@ account.
 3. Ask the agent, for example:
    - "What's due this week, and is anything putting my transfer at risk?"
    - "Compare every campus you cover for computer science — where do my classes count the most?"
-   - "Why doesn't PHYS 1A count at Cal Poly Pomona?"
-   - "Remind me to file my UC TAG before September 30."
+   - "Why doesn't CSCI 1 count at Cal Poly Pomona?"
+   - "What has to happen before the UC application deadline? Add a reminder for it."
 4. The **Tool console** at the bottom of the page runs every tool by hand; the
    **activity feed** shows every call the agent made.
 5. To use your own Canvas: pick your school, paste a Canvas access token
