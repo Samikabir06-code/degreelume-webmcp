@@ -166,7 +166,7 @@ npm run check    # tsc + eslint + vitest
 npm run deploy   # build, then wrangler deploy
 ```
 
-`npm run check` currently runs 373 tests across 19 files, all passing.
+`npm run check` currently runs 403 tests across 20 files, all passing.
 
 ## Provenance for the challenge
 
