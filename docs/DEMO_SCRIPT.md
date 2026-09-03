@@ -37,6 +37,21 @@ Recording at 1440×900 or larger; keep the page zoom at 100%.
 | 2:25 | Scroll to **What your agent did on this page**. | "Everything the agent did is on this feed — tool, input, answer. Structured in, cited out." |
 | 2:35 | Footer: MIT, repo link. | "Open source, MIT, on a public data slice: El Camino's catalog and fifty-two ASSIST agreements. DegreeLume Assistant — a counselor your agent can call." |
 
+## No-talking route (the audio does not have to be your voice)
+
+The rule is "audio that covers what you built and how you used WebMCP" — a
+narration track counts. A generated voiceover of this script exists at
+`Downloads\degreelume-voiceover\voiceover-full.mp3` (2:20). To use it:
+
+1. Record the screen silently while driving the four prompts (Windows: Win+Alt+R
+   for Game Bar, or Clipchamp → Record → Screen). Pause a beat after each
+   prompt so the page has time to react.
+2. Open Clipchamp (built into Windows 11), drop the recording on the timeline,
+   drop `voiceover-full.mp3` on the audio track, trim the video to fit the
+   narration, export 1080p. Total must stay under 3:00.
+3. If your screen recording runs long, cut at prompt boundaries — the
+   narration pauses between "First", "Second", "Third", "Fourth".
+
 ## If a prompt misfires
 
 - The agent asks which campus: say "UCLA" — the page already holds it, but
