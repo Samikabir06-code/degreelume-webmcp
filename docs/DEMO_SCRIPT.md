@@ -1,5 +1,15 @@
 # Demo video — script (target 2:40, hard limit 3:00, audio required)
 
+> **As recorded (2026-09-02, 2:36):** the submitted video uses the author's
+> real El Camino College Canvas (connected read-only, token never shown), the
+> target Cal State Dominguez Hills · Business Administration, and the
+> coursework Canvas mapped to the catalog. It was recorded in Chrome 152 with
+> `chrome://flags/#enable-webmcp-testing` on; the tools were run from the
+> page's own console handle (`window.__degreelume.run`) and the narration
+> says so. Narration, verbatim, is in `docs/NARRATION_AS_RECORDED.md`. The
+> sample-student script below is kept as the alternative for anyone without a
+> Canvas account.
+
 Sami narrates. The screen is `https://assistant.degreelume.com`. Every line
 below has been checked against the built app; the tool answers quoted are the
 real ones for the sample student. Read at a normal pace — the narration is
