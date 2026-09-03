@@ -3,7 +3,7 @@ import type { Citation, ToolError, ToolOutput } from '../tools/contract';
 import { TOOLS, toolDescriptor } from '../tools/contract';
 import { exampleInput, runTool } from '../tools';
 import { isToolError } from '../tools/runtime';
-import { Button, Card, Pill, Select } from './ui';
+import { Button, Card, Pill, Select, Textarea } from './ui';
 import { cx } from '../lib/format';
 
 const GROUP_LABEL: Record<string, string> = {
@@ -104,12 +104,12 @@ export function ToolConsole() {
               </p>
             ) : null}
 
-            <textarea
+            <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               spellCheck={false}
               rows={8}
-              className="w-full rounded-lg border border-line bg-paper p-2.5 font-mono text-xs text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className="p-3"
             />
             {parseError ? <p className="text-xs text-risk">{parseError}</p> : null}
             <Button variant="primary" onClick={run} disabled={running}>
@@ -121,7 +121,7 @@ export function ToolConsole() {
             {!result ? (
               <p className="text-sm text-faint">Output appears here.</p>
             ) : isToolError(result) ? (
-              <div className="rounded-lg border border-risk/20 bg-risk-wash p-3">
+              <div className="rounded-control border border-risk/20 bg-risk-wash p-3.5">
                 <p className="font-mono text-xs text-risk">{result.error}</p>
                 <p className="mt-1 text-sm leading-relaxed text-ink">{result.message}</p>
                 {result.hint ? <p className="mt-1 text-xs text-muted">{result.hint}</p> : null}
@@ -155,7 +155,7 @@ export function ToolConsole() {
                         <span className="text-faint">{c.catalogYear}</span>{' '}
                         <span
                           className={cx(
-                            'rounded-chip px-1.5 py-0.5 text-[0.65rem]',
+                            'rounded-full px-2 py-0.5 text-[10px] font-semibold',
                             {
                               ok: 'bg-ok-wash text-ok',
                               warn: 'bg-warn-wash text-warn',
@@ -179,7 +179,7 @@ export function ToolConsole() {
                   {raw ? 'Hide raw JSON' : 'Show raw JSON'}
                 </button>
                 {raw ? (
-                  <pre className="max-h-96 overflow-auto rounded-lg border border-line bg-paper p-2.5 font-mono text-[0.7rem] leading-relaxed text-muted">
+                  <pre className="max-h-96 overflow-auto rounded-control border border-line bg-paper p-3 font-mono text-[11px] leading-relaxed text-muted">
                     {JSON.stringify(result.data, null, 2)}
                   </pre>
                 ) : null}

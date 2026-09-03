@@ -2,49 +2,891 @@
 
 @import "tailwindcss";
 
-/* Design tokens — the DegreeLume shell: cool neutral paper, hairline rules,
-   big radii, one lilac accent. Components reference tokens (bg-paper,
-   text-accent, border-line…), never raw hex. */
+/* ─── Design tokens ───────────────────────────────────────────────────────────
+   Copied from the DegreeLume product's own `src/index.css` so this page speaks
+   the product's pixel vocabulary exactly: a cool neutral page, hairline rules,
+   big radii, tight type, one lilac accent. Values are transcribed, not
+   imported — this repo ships standalone — so treat the product file as the
+   source of truth and re-copy rather than drift. Components must reference
+   these tokens (bg-paper, text-accent, border-line…) — never raw hex — so the
+   whole page reskins from this one block. */
 @theme {
-  --color-paper: #F6F6F5;
-  --color-ivory: #FFFFFF;
-  --color-parchment: #ECECEA;
-  --color-cloud: #DCDCD8;
+  /* Surfaces — cool, quiet near-whites */
+  --color-paper: #F6F6F5;        /* page background */
+  --color-ivory: #FFFFFF;        /* cards & raised surfaces */
+  --color-parchment: #ECECEA;    /* recessed wells, subtle chips, alt sections */
+  --color-cloud: #DCDCD8;        /* illustration wells, big rounded panels */
 
-  --color-ink: #1D1D1D;
-  --color-muted: #4A4A4A;
-  --color-faint: #6B6B68;
+  /* Text — neutral, no hue */
+  --color-ink: #1D1D1D;          /* primary text */
+  --color-muted: #4A4A4A;        /* secondary text — 8.7:1 on ivory */
+  --color-faint: #6B6B68;        /* tertiary text — 5.2:1 on ivory */
 
+  /* Dark surfaces — the charcoal interruption bands and the footer.
+     `band` is the section fill, `band-line` its hairline. */
+  --color-umber: #4E4E4E;
+  --color-umber-deep: #313131;
+  --color-umber-ink: #191919;
   --color-band: #313131;
   --color-band-line: #585858;
 
-  --color-accent: #6B3FD4;
-  --color-accent-dark: #542FAE;
+  /* One lilac accent; lighter tokens are tints of the same hue. */
+  --color-accent: #6B3FD4;       /* interactive text: 6.4:1 on ivory */
+  --color-accent-dark: #542FAE;  /* hover / active */
   --color-accent-bright: #8460E8;
   --color-accent-light: #F4F2FD;
   --color-accent-wash: #EFECFD;
+  --color-accent-soft: #BDB4F8;  /* soft CTA lilac — dark text on top */
+  --color-clay: #6B3FD4;
+  --color-sky: #A3D7DE;          /* the one secondary tint — dark text on top */
 
-  --color-line: #E3E3E0;
-  --color-line-strong: #C9C9C4;
+  /* Lines — a single hairline, used on card edges AND as the full-bleed rule
+     that divides sections. */
+  --color-line: #E1E1E1;         /* default border */
+  --color-line-strong: #C4C4C2;  /* emphasized border */
 
-  /* Status — used sparingly, always with a label, never colour alone. */
-  --color-ok: #1F7A4D;
-  --color-ok-wash: #E8F5EE;
-  --color-warn: #9A6200;
-  --color-warn-wash: #FFF4DF;
-  --color-risk: #B3261E;
-  --color-risk-wash: #FDECEA;
+  /* Radius scale (24 cards / 16 controls / 12 chips). These add
+     `rounded-card`, `rounded-control`, `rounded-chip` — Tailwind's own
+     rounded-* utilities are untouched. Pills use `rounded-full`. */
+  --radius-card: 24px;
+  --radius-control: 16px;
+  --radius-chip: 12px;
 
-  --font-sans: "Host Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Type metrics: negative tracking at every size, headings set solid. */
+  --tracking-display: -0.032em;
+  --tracking-body: -0.015em;
 
-  --radius-card: 1rem;
-  --radius-chip: 999px;
+  /* Status hues (verdicts, warnings, demo labeling) */
+  --color-green: #16A34A;
+  --color-green-bg: #DCFCE7;
+  --color-green-deep: #166534;
+  --color-amber: #D97706;
+  --color-amber-bg: #FEF3C7;
+  --color-amber-line: #FDE68A;
+  --color-amber-deep: #92400E;
+  --color-amber-ink: #78350F;
+  --color-red: #DC2626;
+  --color-red-bg: #FEE2E2;
+  --color-red-deep: #B91C1C;
+  --color-violet: #7C3AED;
+  --color-violet-bg: #F3E8FF;
+  --color-steel: #475569;
+  --color-steel-bg: #F1F5F9;
+
+  /* This page's three-state verdict vocabulary (ok / watch / risk, and
+     done / missing) is the product's status ramp under names the tools
+     already speak. Same hues, so a chip here and a chip in the product are
+     the same chip. */
+  --color-ok: var(--color-green);
+  --color-ok-wash: var(--color-green-bg);
+  --color-warn: var(--color-amber);
+  --color-warn-wash: var(--color-amber-bg);
+  --color-risk: var(--color-red);
+  --color-risk-wash: var(--color-red-bg);
+
+  /* Type: one grotesk for everything, medium-weight display headings with
+     tight tracking, and JetBrains Mono for course codes, tool names and the
+     small uppercase section labels. `--font-sans` is the same stack under
+     Tailwind's own utility name. */
+  --font-display: 'Host Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Host Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Host Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* ── Motion tokens ──
+     One strong ease-out for anything entering, exiting, or responding to the
+     user (built-in CSS easings are too weak); a strong ease-in-out for things
+     that move while on screen; the iOS drawer curve for sheets. Every
+     Tailwind `transition-*` utility inherits the ease-out via the default
+     timing function below, so `transition-colors` etc. all share one curve. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: var(--ease-out);
+
+  /* A faster spinner reads as a faster app (same load, better perception). */
+  --animate-spin: spin 0.8s linear infinite;
+
+  /* ── Elevation ──
+     Every shadow is ink-tinted so surfaces read as one material lit from one
+     direction. card = resting on paper, raised = a panel that matters, float =
+     menus/popovers, modal = a dialog above a scrim. One wide diffused drop
+     (24px blur, pulled in by -3px) over a tight contact shadow, tinted neutral
+     #1a1a1a rather than a hue. */
+  --shadow-card: 0 1px 2px -1px rgba(26, 26, 26, 0.06);
+  --shadow-raised: 0 6px 24px -3px rgba(26, 26, 26, 0.07), 0 1px 2px -1px rgba(26, 26, 26, 0.05);
+  --shadow-float: 0 6px 24px -3px rgba(26, 26, 26, 0.13), 0 2px 6px -4px rgba(26, 26, 26, 0.13);
+  --shadow-modal: 0 6px 24px -3px rgba(26, 26, 26, 0.33), 0 2px 6px -4px rgba(26, 26, 26, 0.2);
 }
 
-html { color-scheme: light; }
-body { @apply bg-paper text-ink font-sans antialiased; }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  /* Everything is set slightly tight, body included. An element selector, so
+     any Tailwind tracking-* utility still wins. */
+  letter-spacing: var(--tracking-body);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Base-layer defaults live in @layer base so any Tailwind utility on the
+   element still wins (utilities > base). Unlayered rules would silently
+   override `transition-colors`, `outline-none`, `rounded-full`, etc. */
+@layer base {
+  /* Every button gets an explicit, GPU-friendly transition list — never the
+     implicit `all` — plus press feedback: the interface should visibly hear
+     the press. `scale`/`translate` are the individual transform properties,
+     so they compose with Tailwind's transform translation and rotation
+     utilities. */
+  button {
+    transition-property: color, background-color, border-color, box-shadow, opacity, scale, translate;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-out);
+  }
+
+  button:not(:disabled):active {
+    scale: 0.97;
+  }
+
+  /* Switches stay anchored while their knob travels; tabs and text-style
+     buttons don't need a press squash either. */
+  button[role='switch']:not(:disabled):active,
+  button[role='tab']:not(:disabled):active {
+    scale: none;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Keyboard navigation must always be visible. The outline follows the
+     element's own border-radius, so pills stay pills when focused. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* House rule: colour transitions on pressables also carry the press scale, so
+   a `transition-colors` button doesn't snap on :active. Same layer + later
+   source order = this wins over Tailwind's own definition. */
+@layer utilities {
+  .transition-colors {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, scale, translate;
+  }
+}
+
+#root {
+  min-height: 100svh;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: var(--tracking-display);
+}
 
 /* The header is sticky, so a block scrolled into view — by an agent's tool
    call, or by an anchor link — has to stop clear of it, not under it. */
-main section[id] { scroll-margin-top: 6.5rem; }
+main section[id],
+main [id^='block-'],
+main #credit-carry {
+  scroll-margin-top: 6.5rem;
+}
+
+/* ── Buttons ──
+   Three shapes, all 40px tall on the 16px control radius: dark (the primary
+   door), outline (the quiet twin — white on a hairline), and lilac (the one
+   soft accent, dark text on top). `.btn-sm` is the dense-surface size this
+   page leans on: the same shapes at 32px on the chip radius. */
+.btn-dark,
+.btn-outline,
+.btn-lilac,
+.btn-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 2.5rem;
+  padding-inline: 1.25rem;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-body);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    color 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out),
+    scale 150ms var(--ease-out);
+}
+.btn-dark {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.btn-dark:hover:not(:disabled) {
+  background: #333333;
+  box-shadow: 0 6px 24px -3px rgba(26, 26, 26, 0.22);
+}
+.btn-outline {
+  background: var(--color-ivory);
+  border-color: var(--color-line);
+  color: var(--color-ink);
+}
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--color-line-strong);
+  background: var(--color-ivory);
+}
+.btn-lilac {
+  background: var(--color-accent-soft);
+  color: var(--color-umber-ink);
+}
+.btn-lilac:hover:not(:disabled) {
+  background: #a392f3;
+}
+.btn-light {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+.btn-light:hover:not(:disabled) {
+  background: #fff;
+}
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 2rem;
+  padding-inline: 0.625rem;
+  border-radius: var(--radius-chip);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-faint);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-parchment);
+  color: var(--color-ink);
+}
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 2rem;
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-chip);
+  border: 1px solid color-mix(in srgb, var(--color-red) 30%, transparent);
+  background: var(--color-ivory);
+  color: var(--color-red);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: var(--tracking-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-red-bg);
+}
+/* The dense size. Cards on this page stack five deep in a column, so the
+   40px control would set the rhythm of the whole page rather than of its own
+   card; 32px on the chip radius keeps the same shapes at panel scale. */
+.btn-sm {
+  height: 2rem;
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-chip);
+  font-size: 13px;
+}
+.btn-lg {
+  height: 3rem;
+  padding-inline: 1.5rem;
+  font-size: 15px;
+}
+.btn-dark:active,
+.btn-outline:active,
+.btn-lilac:active,
+.btn-light:active,
+.btn-ghost:active,
+.btn-danger:active {
+  scale: 0.97;
+}
+.btn-dark:disabled,
+.btn-outline:disabled,
+.btn-lilac:disabled,
+.btn-light:disabled,
+.btn-ghost:disabled,
+.btn-danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Accent elevation is derived from the theme token so selected cards cannot
+   drift back to a stale product color. */
+.shadow-accent-soft {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+.shadow-accent-ring {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+
+/* Touch input needs a roomier hit area than the dense desktop controls. Keep
+   the 40px mouse layout above, then raise real touch/mobile targets to Apple's
+   44px floor and prevent iOS Safari from zooming 14px form fields on focus.
+   `.touch-target` is opt-in so compact visual-only affordances do not suddenly
+   reshape every mobile screen. */
+@media (max-width: 767px), (pointer: coarse) {
+  .btn-dark,
+  .btn-outline,
+  .btn-lilac,
+  .btn-light {
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .btn-sm,
+  .btn-ghost,
+  .btn-danger {
+    height: 2.25rem;
+    min-height: 2.25rem;
+  }
+
+  .btn-lg {
+    height: 3rem;
+    min-height: 3rem;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='hidden']),
+  select,
+  textarea {
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
+
+  .touch-target {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .touch-target-square {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+/* Dropdown rows in the site header's menus. */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: var(--radius-chip);
+  padding: 0.6rem 0.75rem;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition: background-color 150ms var(--ease-out);
+}
+.menu-item:hover {
+  background: var(--color-parchment);
+}
+
+/* ── Marketing primitives ──
+   Section label: a plain 12px uppercase eyebrow with NEGATIVE tracking and no
+   chrome — the pill and the letter-spacing both went, because a bordered chip
+   competes with the hairline rule that already divides the section.
+   `.eyebrow` is the name to reach for; `.label-mono` is kept as an alias. Big
+   rounded illustration wells (`.well`) hold product mocks. */
+.eyebrow,
+.label-mono {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1rem;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+  background: transparent;
+}
+.eyebrow.on-dark,
+.label-mono.on-dark {
+  color: #b8b8b4;
+}
+.well {
+  background: var(--color-cloud);
+  border-radius: var(--radius-card);
+}
+
+/* ── The site header's ground ──
+   The header is transparent over the top of the page and earns a frosted
+   ground and a hairline rule only once you scroll. Written as a primitive
+   rather than a Tailwind opacity utility so the frosted value lives in one
+   place — and so prefers-reduced-transparency can make it solid below. */
+.header-ground {
+  background-color: color-mix(in srgb, var(--color-paper) 85%, transparent);
+  border-bottom-color: var(--color-line);
+}
+
+/* ── Section bands (the structural signature) ──
+   Full-bleed sections stacked edge to edge, each separated from the next by a
+   single 1px rule. `.band` is one such section — no max width, no radius, no
+   shadow; the rule IS the boundary. `.band-dark` is the charcoal interruption
+   that breaks up a run of pale ones. Inner content still gets a max width via
+   `.band-inner`. */
+.band {
+  border-bottom: 1px solid var(--color-line);
+  padding: 5rem 1.25rem;
+}
+.band-dark {
+  border-bottom: 1px solid var(--color-band-line);
+  border-top: 1px solid var(--color-band-line);
+  background: var(--color-band);
+  color: var(--color-paper);
+  padding: 5rem 1.25rem;
+}
+.band-tight {
+  padding-block: 3rem;
+}
+.band-inner {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1180px;
+}
+@media (min-width: 768px) {
+  .band,
+  .band-dark {
+    padding-inline: 4rem;
+  }
+}
+
+/* Skip link: visually hidden until it takes keyboard focus. */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background: var(--color-ivory);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-float);
+  translate: 0 -150%;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    translate 150ms var(--ease-out),
+    opacity 150ms var(--ease-out);
+}
+.skip-link:focus-visible {
+  translate: 0 0;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────
+   All of it is disabled or gentled under reduced-motion, at the bottom. */
+
+/* Scroll reveal: fade + rise + defocus, with a per-element `--d` stagger.
+   12px of travel, 3px of blur, half a second — which read as content
+   resolving rather than sliding. */
+.rv {
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(3px);
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.5s var(--ease-out),
+    filter 0.5s var(--ease-out);
+  transition-delay: var(--d, 0s);
+}
+.rv.in {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* Italic lilac emphasis inside display headings. */
+.em-accent {
+  font-style: italic;
+  color: var(--color-accent);
+}
+
+/* Progress fills. The bar's resting value lives in `--p` (0–1) and is drawn
+   with scaleX from the left edge — transform only, NEVER width — so it can
+   grow in on first paint (@starting-style) and re-target smoothly whenever
+   the value changes (a transition retargets; a keyframe would restart). */
+.bar-fill {
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(var(--p, 0));
+  transition: transform 450ms var(--ease-out);
+  transition-delay: var(--d, 0s);
+  @starting-style {
+    transform: scaleX(0);
+  }
+}
+
+/* Buttons that lift on hover (paired with token-based colored shadows).
+   Hover motion is gated to real pointers — touch fires false hovers on tap —
+   and the press squashes just like every other button. */
+.btn-lift {
+  transition:
+    translate 160ms var(--ease-out),
+    scale 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out),
+    background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    color 150ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-lift:hover {
+    translate: 0 -1px;
+  }
+}
+.btn-lift:active {
+  translate: 0 0;
+  scale: 0.97;
+}
+
+/* Live activity dot (the agent-is-working signal). */
+.pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Disclosure panels that open below their trigger. */
+.calm-expand {
+  transform-origin: top;
+  animation: calm-expand 200ms var(--ease-out) both;
+}
+@keyframes calm-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scaleY(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Dropdown menus scale out of their trigger, not out of thin air. Set
+   `--origin` to the trigger corner (top left / top right). */
+.menu-in {
+  transform-origin: var(--origin, top left);
+  animation: menu-in 160ms var(--ease-out) both;
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Anchored panels grow from the corner they were opened from. */
+.panel-in {
+  transform-origin: var(--origin, bottom right);
+  animation: panel-in 220ms var(--ease-out) both;
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Rows that arrive from just below their resting spot — a bridge, not a show.
+   The activity feed's newest line, and the agent toast. */
+.bubble-in {
+  animation: bubble-in 160ms var(--ease-out) both;
+}
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Modals stay centered (they aren't anchored to a trigger) and the scrim
+   fades with the panel so they read as one surface. Exit is faster than
+   entry: slow where the user is deciding, quick where the system responds. */
+.modal-in {
+  animation: modal-in 220ms var(--ease-out) both;
+}
+.modal-out {
+  animation: modal-out 150ms var(--ease-out) both;
+}
+.scrim-in {
+  animation: scrim-in 220ms var(--ease-out) both;
+}
+.scrim-out {
+  animation: scrim-out 150ms var(--ease-out) both;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes scrim-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.step-enter {
+  animation: step-enter 200ms var(--ease-out) both;
+}
+@keyframes step-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.error-nudge {
+  animation: error-nudge 280ms linear both;
+}
+@keyframes error-nudge {
+  0% {
+    transform: translateX(0);
+  }
+  28.57% {
+    transform: translateX(6px);
+    animation-timing-function: var(--ease-out);
+  }
+  57.14% {
+    transform: translateX(-6px);
+    animation-timing-function: var(--ease-out);
+  }
+  78.57% {
+    transform: translateX(4px);
+    animation-timing-function: var(--ease-out);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Reduced motion means fewer and gentler animations, not zero: colour and
+   opacity changes that aid comprehension still ease; movement is removed. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Comprehension-aiding fades keep a short duration. */
+  .transition-colors,
+  .transition-opacity,
+  .transition-shadow,
+  .scrim-in,
+  .scrim-out,
+  button {
+    transition-duration: 150ms !important;
+  }
+  /* Entrances become plain fades: same purpose, no travel. */
+  .step-enter,
+  .modal-in,
+  .menu-in,
+  .panel-in,
+  .calm-expand,
+  .bubble-in {
+    animation: scrim-in 150ms ease both !important;
+  }
+  .modal-out {
+    animation: scrim-out 120ms ease both !important;
+  }
+  .error-nudge {
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  /* A busy indicator is status, not decoration — it keeps turning. */
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .rv {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+  .pulse-dot {
+    animation: none;
+  }
+  .bar-fill {
+    transition: none;
+    transform: scaleX(var(--p, 0));
+  }
+  .btn-lift:hover,
+  .btn-lift:active {
+    translate: none;
+    scale: none;
+  }
+  button:not(:disabled):active {
+    scale: none;
+  }
+}
+
+/* Frosted chrome goes solid for people who asked for less transparency. */
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop-blur {
+    backdrop-filter: none;
+  }
+  .header-ground {
+    background-color: var(--color-paper);
+  }
+  [class*='bg-ivory/'] {
+    background-color: var(--color-ivory) !important;
+  }
+  [class*='bg-paper/'] {
+    background-color: var(--color-paper) !important;
+  }
+}
+
+::selection {
+  background: var(--color-accent-wash);
+  color: var(--color-ink);
+}
+
+/* ── Print: the page as a handout ── */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000;
+    font-size: 11px;
+  }
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+    backdrop-filter: none !important;
+  }
+  .bar-fill {
+    opacity: 1 !important;
+    transform: scaleX(var(--p, 1)) !important;
+  }
+  .rv,
+  .step-enter {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  header,
+  footer,
+  nav,
+  [role='tablist'],
+  .skip-link {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  /* Keep a card whole across a page break. */
+  .rounded-card,
+  .rounded-control,
+  .rounded-chip,
+  .rounded-2xl,
+  .rounded-xl,
+  .rounded-lg {
+    break-inside: avoid;
+  }
+  a[href^='http']::after {
+    content: '';
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

@@ -43,14 +43,14 @@ export function Intro({ state }: { state: PageState }) {
     state.canvas === null;
 
   return (
-    <section className="rounded-card border border-line bg-ivory px-5 py-3.5">
-      <p className="text-sm leading-relaxed text-ink">
+    <section className="rounded-card border border-line bg-ivory px-5 py-5 shadow-card sm:px-6">
+      <p className="max-w-[70ch] text-[15px] leading-relaxed text-ink">
         Thirteen site tools your AI agent can call: transfer articulation across 17 UC/CSU campuses, your Canvas grades
         and due dates, and what has to happen before your deadline — every answer cited, none of it guessed.
       </p>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        <span className="text-[0.7rem] tracking-wide text-faint uppercase">Try asking</span>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="eyebrow shrink-0">Try asking</span>
         {PROMPTS.map((p) => (
           <button
             key={p}
@@ -60,9 +60,9 @@ export function Intro({ state }: { state: PageState }) {
               void copy(p).then((ok) => setCopied(ok ? p : null));
             }}
             className={cx(
-              'max-w-full truncate rounded-chip border px-2.5 py-0.5 text-left text-[0.7rem] transition',
+              'max-w-full truncate rounded-full border px-3 py-1.5 text-left text-xs transition-colors',
               copied === p
-                ? 'border-ok/25 bg-ok-wash text-ok'
+                ? 'border-ok/20 bg-ok-wash text-ok'
                 : 'border-line bg-paper text-muted hover:border-accent/30 hover:bg-accent-light hover:text-accent',
             )}
           >
@@ -72,9 +72,10 @@ export function Intro({ state }: { state: PageState }) {
       </div>
 
       {empty ? (
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-3">
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-5">
           <Button
             variant="primary"
+            className="btn-lift"
             disabled={busy}
             onClick={() => {
               setBusy(true);
@@ -87,7 +88,7 @@ export function Intro({ state }: { state: PageState }) {
           >
             {busy ? 'Loading…' : 'Load the sample student'}
           </Button>
-          <p className="text-xs leading-relaxed text-faint">or set your target and courses on the left.</p>
+          <p className="text-[13px] leading-relaxed text-faint">or set your target and courses on the left.</p>
         </div>
       ) : null}
     </section>

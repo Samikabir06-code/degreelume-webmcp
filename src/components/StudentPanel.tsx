@@ -266,7 +266,7 @@ export function StudentPanel({ state }: { state: PageState }) {
               />
             </Field>
             {results.length ? (
-              <ul className="mt-2 divide-y divide-line overflow-hidden rounded-lg border border-line">
+              <ul className="mt-2 divide-y divide-line overflow-hidden rounded-control border border-line">
                 {results.map((c) => (
                   <li key={c.code} className="flex items-center justify-between gap-2 bg-ivory px-2.5 py-2">
                     <span className="min-w-0">
@@ -304,7 +304,7 @@ export function StudentPanel({ state }: { state: PageState }) {
       >
         <div className="space-y-3">
           {canvas ? (
-            <div className="rounded-lg border border-line bg-paper px-3 py-2.5 text-xs leading-relaxed text-muted">
+            <div className="rounded-control border border-line bg-paper px-3.5 py-3 text-xs leading-relaxed text-muted">
               <p className="text-ink">
                 {canvas.userName ?? 'Connected'} · <span className="font-mono">{canvas.host}</span>
               </p>
@@ -384,7 +384,7 @@ export function StudentPanel({ state }: { state: PageState }) {
             Clear everything
           </Button>
         </div>
-        <p className="mt-2 text-[0.7rem] leading-relaxed text-faint">
+        <p className="mt-3 text-[11.5px] leading-relaxed text-faint">
           The sample student is fictional and labelled <span className="font-mono">sample</span> in every citation and
           summary, so no answer built on it can be mistaken for your own record.
         </p>

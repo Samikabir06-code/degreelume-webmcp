@@ -34,12 +34,12 @@ export function ActivityFeed({ state }: { state: PageState }) {
                   onClick={() => setOpen(expanded ? null : a.id)}
                   className="flex w-full items-start gap-2.5 text-left"
                 >
-                  <span className="w-14 shrink-0 pt-0.5 font-mono text-[0.7rem] text-faint">
+                  <span className="w-14 shrink-0 pt-0.5 font-mono text-[11px] text-faint">
                     {new Date(a.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
                   </span>
                   <span
                     className={cx(
-                      'shrink-0 rounded-chip border px-1.5 py-0.5 text-[0.65rem] font-medium',
+                      'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold',
                       a.via === 'agent' ? 'border-accent/20 bg-accent-light text-accent' : 'border-line bg-paper text-faint',
                     )}
                   >
@@ -51,11 +51,11 @@ export function ActivityFeed({ state }: { state: PageState }) {
                   </span>
                 </button>
                 {expanded ? (
-                  <pre className="mt-1.5 ml-16 overflow-x-auto rounded-lg border border-line bg-paper p-2.5 font-mono text-[0.7rem] leading-relaxed text-muted">
+                  <pre className="mt-2 ml-16 overflow-x-auto rounded-chip border border-line bg-paper p-3 font-mono text-[11px] leading-relaxed text-muted">
                     {JSON.stringify(a.input ?? {}, null, 2)}
                   </pre>
                 ) : (
-                  <p className="mt-0.5 ml-16 truncate font-mono text-[0.65rem] text-faint">{shortJson(a.input)}</p>
+                  <p className="mt-0.5 ml-16 truncate font-mono text-[11px] text-faint">{shortJson(a.input)}</p>
                 )}
               </li>
             );

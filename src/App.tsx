@@ -26,9 +26,11 @@ export default function App() {
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <Header />
 
-      <main className="mx-auto w-full max-w-6xl grow px-4 py-6 sm:px-6">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl grow px-4 py-8 outline-none sm:px-6">
         <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
-          <div className="min-w-0 lg:sticky lg:top-24">
+          {/* The header is 68px of bar over a 33px status strip, so a sticky
+              panel has to clear 101px, not the bar alone. */}
+          <div className="min-w-0 lg:sticky lg:top-28">
             <StudentPanel state={state} />
           </div>
 

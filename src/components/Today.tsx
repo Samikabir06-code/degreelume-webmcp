@@ -108,7 +108,7 @@ function CurrentCourses({ state, catalogCodes }: { state: PageState; catalogCode
         <div className="-mx-1 overflow-x-auto">
           <table className="w-full min-w-[34rem] text-sm">
             <thead>
-              <tr className="text-left text-[0.7rem] tracking-wide text-faint uppercase">
+              <tr className="text-left text-[11px] text-faint uppercase">
                 <th className="px-1 pb-2 font-medium">Course</th>
                 <th className="px-1 pb-2 font-medium">Term</th>
                 <th className="px-1 pb-2 font-medium">Grade</th>
@@ -121,7 +121,7 @@ function CurrentCourses({ state, catalogCodes }: { state: PageState; catalogCode
                 <tr key={c.canvasCourseId} className="align-top">
                   <td className="px-1 py-2">
                     <p className="leading-snug font-medium text-ink">{c.name}</p>
-                    {c.courseCode ? <p className="font-mono text-[0.7rem] text-faint">{c.courseCode}</p> : null}
+                    {c.courseCode ? <p className="font-mono text-[11px] text-faint">{c.courseCode}</p> : null}
                   </td>
                   <td className="px-1 py-2 text-xs text-faint">{c.termName ?? '—'}</td>
                   <td className="px-1 py-2">
@@ -333,7 +333,7 @@ function RiskBlock({
             <li
               key={`${f.course.mappedCatalogCode ?? f.course.canvasCourseCode ?? i}-${i}`}
               className={cx(
-                'rounded-lg border px-3 py-2.5',
+                'rounded-control border px-3.5 py-3',
                 f.level === 'risk'
                   ? 'border-risk/20 bg-risk-wash'
                   : f.level === 'watch'
@@ -357,7 +357,7 @@ function RiskBlock({
                 <Pill tone={LEVEL_TONE[f.level] ?? 'muted'}>{f.level}</Pill>
               </div>
               <p className="mt-1 text-xs leading-relaxed text-muted">{f.message}</p>
-              <p className="mt-1 text-[0.7rem] leading-relaxed text-faint">
+              <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
                 {f.currentLabel ? `Now: ${f.currentLabel}. ` : ''}
                 {f.neededRemainingAverage !== null
                   ? `Needs ${pct(f.neededRemainingAverage)} average on the remaining work${f.estimated ? ' (estimated)' : ''}. `
@@ -405,7 +405,7 @@ function DeadlinesBlock({ result }: { result: ReturnType<typeof usePassiveTool<D
               <div className="min-w-0">
                 <p className="text-sm leading-snug text-ink">{item.label}</p>
                 {item.action ? <p className="mt-0.5 text-xs leading-relaxed text-muted">{item.action}</p> : null}
-                <p className="mt-0.5 text-[0.7rem] text-faint">
+                <p className="mt-1 text-[11px] text-faint">
                   {fmtDate(item.date)} · {relative(item.date)}
                   {item.source ? (
                     <>
@@ -475,7 +475,7 @@ function Reminders({ state }: { state: PageState }) {
                   <p className={cx('text-sm leading-snug', r.done ? 'text-faint line-through' : 'text-ink')}>
                     {r.title}
                   </p>
-                  <p className="text-[0.7rem] text-faint">
+                  <p className="text-[11px] text-faint">
                     {fmtDate(r.due)} · {relative(r.due)}
                     {r.createdBy === 'agent' ? ' · added by your agent' : ''}
                     {r.note ? ` · ${r.note}` : ''}

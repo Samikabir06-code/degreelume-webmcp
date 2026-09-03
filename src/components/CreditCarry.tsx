@@ -131,7 +131,7 @@ export function CreditCarry({ state }: { state: PageState }) {
           <div className="-mx-1 overflow-x-auto">
             <table className="w-full min-w-[52rem] text-sm">
               <thead>
-                <tr className="text-left text-[0.7rem] tracking-wide text-faint uppercase">
+                <tr className="text-left text-[11px] text-faint uppercase">
                   {COLUMNS.map((c) => (
                     <th key={c.label} className="px-2 pb-2 font-medium">
                       {c.key ? (
@@ -144,7 +144,7 @@ export function CreditCarry({ state }: { state: PageState }) {
                           )}
                         >
                           {c.label}
-                          <span aria-hidden className="text-[0.6rem]">
+                          <span aria-hidden className="text-[9px]">
                             {sort.key === c.key ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}
                           </span>
                         </button>
@@ -183,12 +183,12 @@ export function CreditCarry({ state }: { state: PageState }) {
                       >
                         {r.campusName}
                         {isTarget ? (
-                          <span className="ml-1.5 rounded-chip bg-accent px-1.5 py-0.5 text-[0.6rem] font-medium whitespace-nowrap text-white">
+                          <span className="ml-1.5 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap text-white">
                             target
                           </span>
                         ) : null}
                         {isBest && !isTarget ? (
-                          <span className="ml-1.5 rounded-chip bg-ok-wash px-1.5 py-0.5 text-[0.6rem] font-medium whitespace-nowrap text-ok">
+                          <span className="ml-1.5 rounded-full bg-ok-wash px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap text-ok">
                             best coverage
                           </span>
                         ) : null}
@@ -239,7 +239,7 @@ export function CreditCarry({ state }: { state: PageState }) {
                         {r.provenance ? (
                           <span
                             className={cx(
-                              'ml-1.5 rounded-chip px-1.5 py-0.5 text-[0.65rem]',
+                              'ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold',
                               r.provenance === 'verified' ? 'bg-ok-wash text-ok' : 'bg-warn-wash text-warn',
                             )}
                             title={

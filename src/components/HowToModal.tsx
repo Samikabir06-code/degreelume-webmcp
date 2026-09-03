@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from './ui';
+import { X } from 'lucide-react';
 import { cx } from '../lib/format';
 
 const PROMPTS = [
@@ -53,45 +53,53 @@ export function HowToModal({ onClose }: { onClose: () => void }) {
   // position:fixed children — so the dialog goes straight to the body.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-band/40 p-4 backdrop-blur-[2px] sm:p-8"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 print:hidden sm:p-8"
       role="dialog"
       aria-modal="true"
       aria-label="How to use this page with an agent"
       onClick={onClose}
     >
+      {/* The product's one modal shell: scrim and panel enter together on the
+          shared ease-out, ink at 40% rather than a coloured wash. */}
+      <div className="scrim-in fixed inset-0 bg-ink/40" aria-hidden="true" />
       <div
-        className="w-full max-w-2xl rounded-card border border-line bg-ivory shadow-xl"
+        className="modal-in relative w-full max-w-2xl rounded-2xl border border-line bg-ivory shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
+        <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
           <div>
-            <h2 className="text-base font-semibold tracking-tight">Use this page with an agent</h2>
-            <p className="mt-1 text-xs leading-relaxed text-faint">
+            <h2 className="text-[17px] leading-tight font-semibold text-ink">Use this page with an agent</h2>
+            <p className="mt-1.5 max-w-[62ch] text-[12.5px] leading-relaxed text-faint">
               The page registers its WebMCP tools with the browser. Any browser that speaks the Model Context API can call them —
               nothing is installed, and the tools answer from the same engine the page renders from.
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close">
-            Close
-          </Button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mt-1 -mr-1 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-parchment hover:text-ink"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
         </header>
 
-        <div className="space-y-4 px-6 py-5">
-          <ol className="space-y-3">
+        <div className="space-y-5 px-6 py-6">
+          <ol className="space-y-4">
             {WAYS.map((w, i) => (
               <li key={w.title} className="flex gap-3">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-accent-light text-[0.7rem] font-semibold text-accent">
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-accent-light text-[11px] font-semibold text-accent">
                   {i + 1}
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink">{w.title}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted">{w.body}</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{w.body}</p>
                   {w.code ? (
                     <button
                       type="button"
                       onClick={() => copy(w.code)}
                       className={cx(
-                        'mt-1.5 block w-full truncate rounded-lg border border-line bg-paper px-2.5 py-1.5 text-left font-mono text-[0.7rem] text-muted transition hover:border-line-strong hover:text-ink',
+                        'mt-2 block w-full truncate rounded-chip border border-line bg-paper px-3 py-2 text-left font-mono text-[11px] text-muted transition-colors hover:border-line-strong hover:text-ink',
                       )}
                     >
                       {copied === w.code ? 'Copied' : w.code}
@@ -102,27 +110,27 @@ export function HowToModal({ onClose }: { onClose: () => void }) {
             ))}
           </ol>
 
-          <div className="rounded-card border border-line bg-paper p-4">
-            <p className="text-xs font-semibold tracking-wide text-muted uppercase">Five prompts to try</p>
-            <ul className="mt-2 space-y-1.5">
+          <div className="rounded-control border border-line bg-paper p-5">
+            <p className="eyebrow">Five prompts to try</p>
+            <ul className="mt-3 space-y-1">
               {PROMPTS.map((p) => (
                 <li key={p}>
                   <button
                     type="button"
                     onClick={() => copy(p)}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-sm leading-snug text-ink transition hover:bg-accent-light"
+                    className="w-full rounded-chip px-2.5 py-2 text-left text-sm leading-snug text-ink transition-colors hover:bg-accent-light"
                   >
                     <span className="text-faint">“</span>
                     {p}
                     <span className="text-faint">”</span>
-                    <span className="ml-2 text-[0.7rem] text-faint">{copied === p ? 'copied' : 'copy'}</span>
+                    <span className="ml-2 text-[11px] text-faint">{copied === p ? 'copied' : 'copy'}</span>
                   </button>
                 </li>
               ))}
             </ul>
           </div>
 
-          <p className="text-xs leading-relaxed text-faint">
+          <p className="text-[12.5px] leading-relaxed text-faint">
             No agent handy? Everything is also runnable from the tool console at the bottom of the page, or from DevTools
             through <code className="font-mono">window.__degreelume</code>.
           </p>
