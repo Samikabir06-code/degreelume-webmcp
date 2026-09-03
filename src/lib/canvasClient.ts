@@ -40,7 +40,12 @@ function normalizeCode(value: unknown): string {
 }
 
 function codeParts(value: unknown): { subject: string; number: string } | null {
-  const tokens = normalizeCode(value).split(' ').filter(Boolean);
+  // A real El Camino Canvas course_code carries a leading term token
+  // ("2026/SP MATH-191-0952") that normalizeCode leaves intact (it has no
+  // '-'/'_'/'.' to fold). Any token containing '/' is dropped before the
+  // subject+number scan — this covers the term prefix ("2026/SP") and
+  // anything shaped like it, without hard-coding a term format.
+  const tokens = normalizeCode(value).split(' ').filter((t) => t && !t.includes('/'));
   if (tokens.length < 2) return null;
   const subject = tokens[0];
   if (!/^[A-Z]{2,6}$/.test(subject)) return null;
@@ -61,11 +66,25 @@ export function catalogCandidates(
   const exact = catalog.filter((c) => normalizeCode(c.code) === wanted);
   if (exact.length > 0) return exact.map((c) => c.code);
 
-  const base = parts.number.replace(/[A-Z]+$/, '');
+  // The catalog renumbers courses (AB 1111 common course numbering) and keeps
+  // the retired number on `formerCode` — Canvas keeps issuing the OLD code
+  // (course_code isn't rewritten when the catalog renumbers), so an exact
+  // match against formerCode is exactly as confident as one against the
+  // current code. The mapping always resolves to the CURRENT code (c.code),
+  // never the retired one.
+  const viaFormerCode = catalog.filter((c) => c.formerCode && normalizeCode(c.formerCode) === wanted);
+  if (viaFormerCode.length > 0) return viaFormerCode.map((c) => c.code);
+
+  // Last resort, deliberately narrow: only the honours / lab variant of the
+  // SAME number ("MATH 190" ↔ "MATH 190H", "PHYS 1A" ↔ "PHYS 1AL"). A looser
+  // "same digits" rule mapped ENGL 1C to ENGL 1AE, an ESL course — a
+  // confident wrong mapping is worse than none. Anything else stays unmapped
+  // for the student to resolve by hand.
+  const variantOf = (a: string, b: string) => a !== b && (a === `${b}H` || b === `${a}H` || a === `${b}L` || b === `${a}L`);
   return catalog
     .filter((c) => {
       const cp = codeParts(c.code);
-      return cp && cp.subject === parts.subject && cp.number.replace(/[A-Z]+$/, '') === base;
+      return cp && cp.subject === parts.subject && variantOf(cp.number, parts.number);
     })
     .map((c) => c.code)
     .slice(0, 5);
@@ -229,6 +248,16 @@ function computeRemainingWeight(assignments: Record<string, unknown>[]): number 
 
 // ─── Course row mapping ─────────────────────────────────────────────────────
 
+// Some completed enrollments come back with course_code AND name both
+// blank — Canvas restricts what a concluded course discloses. Rather than
+// let that render as a blank row, name it after the one thing we do have:
+// the Canvas course id.
+function displayName(raw: Record<string, unknown>, id: string): string {
+  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  if (name) return name;
+  return `Unnamed course (Canvas #${id})`;
+}
+
 function courseSnapshotFromRaw(
   raw: Record<string, unknown>,
   enrollmentState: 'active' | 'completed',
@@ -236,7 +265,7 @@ function courseSnapshotFromRaw(
 ): CanvasCourseSnapshot {
   const id = String(raw.id ?? '');
   const code = typeof raw.course_code === 'string' ? (raw.course_code as string) : null;
-  const name = typeof raw.name === 'string' ? (raw.name as string) : '';
+  const name = displayName(raw, id);
   const term = raw.term as Record<string, unknown> | undefined;
   const termName =
     typeof term?.name === 'string' && term.name !== 'Default Term' ? (term.name as string) : null;
@@ -326,7 +355,7 @@ async function syncCanvas(host: string, token: string): Promise<CanvasSnapshot> 
           MAX_ASSIGNMENTS_PER_COURSE,
         );
         const code = typeof raw.course_code === 'string' ? (raw.course_code as string) : null;
-        const name = typeof raw.name === 'string' ? (raw.name as string) : '';
+        const name = displayName(raw, id);
         const { mappedCatalogCode } = mapCourse(code, name);
         const courseLabel = mappedCatalogCode ?? code ?? name;
         for (const a of list) assignments.push(buildAssignmentSnapshot(a, id, courseLabel));

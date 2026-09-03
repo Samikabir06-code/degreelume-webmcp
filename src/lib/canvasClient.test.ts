@@ -248,3 +248,91 @@ describe('setCourseMapping', () => {
     expect(getState().canvas).toBeNull();
   });
 });
+
+// ─── Real El Camino Canvas corpus (2026-09 connect) ────────────────────────
+//
+// A real connect came back with course_code values none of the old logic
+// mapped: every one carries a leading term token ("2026/SP") that codeParts
+// treated as the subject, and several codes are pre-renumbering (AB 1111)
+// codes the catalog now files under `formerCode`. This corpus is the actual
+// values Canvas returned; the assertions are the actual catalog outcomes —
+// including the honest "no candidates" case for a code the catalog data does
+// not carry a formerCode for.
+describe('catalogCandidates — real El Camino course_code values', () => {
+  const cases: [string, string[]][] = [
+    ['2026/SP MATH-191-0952', ['MATH 191']],
+    ['2026/SP STAT-C1000-0517', ['STAT C1000']],
+    ['2024/FA ECON-101-2373', ['ECON C2002']], // formerCode: current code, not the retired one
+    ['2025/SP ENGL-1B-6455', ['ENGL C1002']], // formerCode
+    ['2025/SU HIST-101-2513', ['HIST C1001']], // formerCode
+    ['2026/WI COMS-140-2230', ['COMS 140']],
+    ['2025/FA LAW-4-3703', ['LAW 4']],
+    ['2026/SP BUS-151-3123', ['BUS 151']],
+    ['2026/SP ESTU-1-2488', ['ESTU 1']],
+    ['2024/FA JAPA-1-6793', ['JAPA 1']],
+    ['2025/FA MATH-190-0931', ['MATH 190']],
+  ];
+
+  for (const [code, expected] of cases) {
+    it(`maps "${code}" -> ${JSON.stringify(expected)}`, () => {
+      expect(catalogCandidates(code, '', ECC_COURSES)).toEqual(expected);
+    });
+  }
+
+  it('a code with no formerCode on record (ENGL 1C) stays unmapped rather than guessing', () => {
+    // The catalog has no ENGL 1C and no formerCode for it. The old same-digits
+    // fallback mapped it to ENGL 1AE, an ESL course; the fallback now accepts
+    // only an honours/lab variant of the identical number, so this is empty.
+    expect(catalogCandidates('2025/WI ENGL-1C-4625', '', ECC_COURSES)).toEqual([]);
+  });
+
+  it('suggestCatalogMatch resolves each unambiguous real code to the CURRENT catalog code', () => {
+    expect(suggestCatalogMatch('2024/FA ECON-101-2373', '', ECC_COURSES)).toBe('ECON C2002');
+    expect(suggestCatalogMatch('2025/SU HIST-101-2513', '', ECC_COURSES)).toBe('HIST C1001');
+    expect(suggestCatalogMatch('2026/SP MATH-191-0952', '', ECC_COURSES)).toBe('MATH 191');
+  });
+});
+
+describe('connectCanvas — a real-shaped roster (term-prefixed codes, formerCode renumbers, blank completed rows)', () => {
+  it('maps every real course_code and gives an unnamed completed course a readable name', async () => {
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = new URL(String(input), 'http://localhost');
+      const path = url.searchParams.get('path') ?? '';
+      if (path === '/api/v1/users/self') return jsonResponse({ id: 1, name: 'Real Student' });
+      if (path.startsWith('/api/v1/courses?enrollment_state=active')) {
+        return jsonResponse([
+          { id: 701, course_code: '2026/SP MATH-191-0952', name: 'Calc II', enrollments: [{ computed_current_score: 80 }] },
+          { id: 702, course_code: '2024/FA ECON-101-2373', name: 'Micro', enrollments: [{ computed_current_score: 90 }] },
+        ]);
+      }
+      if (path.startsWith('/api/v1/courses?enrollment_state=completed')) {
+        return jsonResponse([
+          // Canvas restricts some concluded courses: both code and name blank.
+          { id: 900, course_code: null, name: '', enrollments: [{ computed_final_grade: 'B' }] },
+          { id: 901, course_code: '2025/SU HIST-101-2513', name: 'US History', enrollments: [{ computed_final_grade: 'A' }] },
+        ]);
+      }
+      if (path.startsWith('/api/v1/courses/701/assignments') || path.startsWith('/api/v1/courses/702/assignments')) {
+        return jsonResponse([]);
+      }
+      return jsonResponse({ error: 'not_found' }, 404);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const snapshot = await connectCanvas('elcamino.instructure.com', 'tok-real');
+
+    const math191 = snapshot.courses.find((c) => c.canvasCourseId === '701');
+    expect(math191?.mappedCatalogCode).toBe('MATH 191');
+
+    const econ = snapshot.courses.find((c) => c.canvasCourseId === '702');
+    expect(econ?.mappedCatalogCode).toBe('ECON C2002');
+
+    const hist = snapshot.courses.find((c) => c.canvasCourseId === '901');
+    expect(hist?.mappedCatalogCode).toBe('HIST C1001');
+
+    const blank = snapshot.courses.find((c) => c.canvasCourseId === '900');
+    expect(blank?.name).toBe('Unnamed course (Canvas #900)');
+    expect(blank?.courseCode).toBeNull();
+    expect(blank?.mappedCatalogCode).toBeNull();
+  });
+});
